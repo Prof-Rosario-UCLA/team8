@@ -1,20 +1,20 @@
 from ..models import db, Resume, ResumeSection, ResumeItem, ResumeBullet, Skill
 from ..models.models import Education, Experience, Project, BulletPoint, ResumeItemType, User, Template
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload, undefer, Session as SQLAlchemySession
-from sqlalchemy.orm.scoping import scoped_session
+from sqlalchemy.orm import joinedload, undefer, Session as SQLAlchemySession, selectinload, make_transient
+from sqlalchemy import func
 from uuid import UUID
 from .utils import get_or_404, get_resolved_field
 
-# Import the new serializer functions
-from .education_controller import serialize_education_detail
-from .experience_controller import serialize_experience_detail
-from .project_controller import serialize_project_detail
-from .bullet_point_controller import serialize_bullet_point as serialize_global_bullet_point
+# Import serializer functions
+from .education_controller import serialize_education
+from .experience_controller import serialize_experience
+from .project_controller import serialize_project
 from .skill_controller import serialize_skill as serialize_global_skill
 
 import datetime
 import enum
+from typing import Optional, List
 
 # Helper function to fetch the global item
 def _get_global_item(item_type: ResumeItemType, item_id: UUID):
@@ -48,8 +48,8 @@ def get_all_resumes(user_id=None):
 def get_resume(resume_id):
     """Get a specific resume with all its sections and items"""
     resume = Resume.query.options(
-        joinedload(Resume.sections),
-        joinedload(Resume.items).joinedload(ResumeItem.resume_bullets)
+        joinedload(Resume.sections).selectinload(ResumeSection.items).joinedload(ResumeItem.resume_bullets),
+        joinedload(Resume.sections).selectinload(ResumeSection.items).selectinload(ResumeItem.overridden_skills)
     ).get_or_404(resume_id)
     return serialize_resume(resume, include_details=True)
 
@@ -85,22 +85,48 @@ def delete_resume(resume_id):
     resume = Resume.query.get_or_404(resume_id)
     db.session.delete(resume)
     db.session.commit()
+    return {"message": "Resume deleted successfully"}
 
-def reorder_sections(resume_id, order_data):
-    """Reorder sections in a resume"""
+def reorder_sections(resume_id: UUID, section_type_order_list: list[str]):
+    """
+    Reorders sections in a resume based on a list of section type strings.
+    Example: ["experience", "project", "education"]
+    """
     resume = Resume.query.get_or_404(resume_id)
     
-    # Update order_index for each section
-    for section_order in order_data['sections']:
-        section = ResumeSection.query.filter_by(
-            resume_id=resume_id, 
-            section_type=section_order['section_type']
-        ).first()
-        
-        if section:
-            section.order_index = section_order['order_index']
-    
-    db.session.commit()
+    # Create a map of section_type_enum to its new order_index
+    new_order_map = {}
+    for index, type_str in enumerate(section_type_order_list):
+        try:
+            section_type_enum = ResumeItemType[type_str] # Convert string to enum
+            new_order_map[section_type_enum] = index
+        except KeyError:
+            raise ValueError(f"Invalid section_type '{type_str}' in ordering list.")
+
+    # Update existing sections
+    updated_count = 0
+    for section in resume.sections:
+        if section.section_type in new_order_map:
+            section.order_index = new_order_map[section.section_type]
+            updated_count +=1
+        else:
+            # This section type was not in the new order list,
+            # it might be orphaned or need to be handled (e.g., deleted or appended).
+            # For now, we'll assume the list is comprehensive for reordering.
+            # Alternatively, assign a high order_index to push it to the end.
+            pass 
+            
+    # Note: This doesn't create sections if they are in the list but not in DB.
+    # That's typically handled by adding items or a dedicated "ensure sections exist" logic.
+
+    try:
+        db.session.commit()
+        # Re-fetch to ensure data is current, especially order_index
+        db.session.refresh(resume)
+        return serialize_resume(resume, include_details=True)
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        raise ValueError(f"Database error reordering sections: {str(e)}")
 
 def reorder_bullets(resume_id, item_type_str, item_id, order_data):
     """Reorder bullets for a resume item.
@@ -161,22 +187,14 @@ def reorder_bullets(resume_id, item_type_str, item_id, order_data):
         db.session.rollback()
         raise ValueError(f"Error reordering bullets: {str(e)}")
 
-def serialize_bullet(bullet_instance, is_override: bool):
-    """Serializes a ResumeBullet or a global BulletPoint."""
-    return {
-        'id': str(bullet_instance.id) if hasattr(bullet_instance, 'id') and not is_override else None, # Global bullets have IDs
-        'resume_bullet_id': str(bullet_instance.id) if hasattr(bullet_instance, 'id') and is_override else None, # Placeholder if ResumeBullet gets its own ID
-        'order_index': bullet_instance.order_index,
-        'content': bullet_instance.content,
-        'is_override': is_override
-    }
-
-def serialize_resume_item_detail(resume_item_entry: ResumeItem):
+def serialize_resume_item_detail(resume_item_entry: Optional[ResumeItem]):
     """
     Serializes a ResumeItem with its details, applying overrides.
-    This function now orchestrates fetching global data and applying
-    ResumeItem-specific overrides for fields, bullets, and skills.
+    Bullets will be serialized as a list of strings.
     """
+    if not resume_item_entry:
+        return None # Or an appropriate error/empty structure
+
     item_detail_scaffold = {
         'resume_id': str(resume_item_entry.resume_id),
         'item_type': resume_item_entry.item_type.value,
@@ -209,24 +227,34 @@ def serialize_resume_item_detail(resume_item_entry: ResumeItem):
         item_detail_scaffold['data']['error'] = f"Global item {resume_item_entry.item_id} of type {resume_item_entry.item_type.value} not found."
         return item_detail_scaffold
 
-    # --- Resolve Field Overrides ---
+    #  Resolve Field Overrides 
     field_overrides_dict = resume_item_entry.field_overrides.value if resume_item_entry.field_overrides is not None else {}
 
-    # --- Resolve Bullets ---
-    resolved_bullets = []
-    overridden_bullets = ResumeBullet.query.filter_by(
-        resume_id=resume_item_entry.resume_id,
-        item_type=resume_item_entry.item_type,
-        item_id=resume_item_entry.item_id
-    ).order_by(ResumeBullet.order_index).all()
+    #  Resolve Bullets 
+    resolved_bullets_list_of_strings: List[str] = []
+    
+    # Query for overridden bullets, ensuring they are ordered
+    # The relationship ResumeItem.bullets is already ordered by ResumeBullet.order_index
+    # but if accessing ResumeBullet directly, ensure order_by.
+    # Let's use the relationship if available and loaded.
+    # Assuming resume_item_entry.bullets is eager loaded with order_by.
+    
+    # Check if bullets were eager loaded via the relationship
+    if 'bullets' in resume_item_entry.__dict__ and resume_item_entry.bullets: # Accessing via loaded relationship
+        resolved_bullets_list_of_strings = [b.content for b in resume_item_entry.bullets]
+    else: # Fallback to query if not loaded or to be absolutely sure of ordering here
+        overridden_bullets_q = ResumeBullet.query.filter_by(
+            resume_id=resume_item_entry.resume_id,
+            item_type=resume_item_entry.item_type,
+            item_id=resume_item_entry.item_id
+        ).order_by(ResumeBullet.order_index).all()
+        if overridden_bullets_q:
+            resolved_bullets_list_of_strings = [b.content for b in overridden_bullets_q]
+        elif global_item and hasattr(global_item, 'bullets'):
+            # Assuming global_item.bullets relationship is also defined with order_by
+            resolved_bullets_list_of_strings = [b.content for b in global_item.bullets]
 
-    if overridden_bullets:
-        resolved_bullets = [serialize_bullet(b, is_override=True) for b in overridden_bullets]
-    elif global_item and hasattr(global_item, 'bullets'): # Check if global_item is not None and has bullets
-        # global_item.bullets should already be ordered by the relationship definition or an explicit order_by in the query
-        resolved_bullets = [serialize_global_bullet_point(b) for b in global_item.bullets] # Use imported global serializer
-
-    # --- Resolve Skills ---
+    #  Resolve Skills 
     resolved_skills = []
     # Check for overridden skills first
     # Ensure overridden_skills are loaded, e.g. via joinedload in the initial query for resume_item_entry
@@ -237,54 +265,53 @@ def serialize_resume_item_detail(resume_item_entry: ResumeItem):
         resolved_skills = [serialize_global_skill(skill) for skill in global_item.skills]
 
 
-    # --- Dispatch to specific serializer ---
-    serialized_item_content = None
+    #  Dispatch to specific serializer 
+    serialized_item_data_fields = None # This will now only contain the 'data' part
     if resume_item_entry.item_type.value == ResumeItemType.experience:
-        serialized_item_content = serialize_experience_detail(global_item, field_overrides_dict, resolved_bullets, resolved_skills)
+        serialized_item_data_fields = serialize_experience(global_item, field_overrides_dict=field_overrides_dict)
     elif resume_item_entry.item_type.value == ResumeItemType.project:
-        serialized_item_content = serialize_project_detail(global_item, field_overrides_dict, resolved_bullets, resolved_skills)
+        serialized_item_data_fields = serialize_project(global_item, field_overrides_dict=field_overrides_dict)
     elif resume_item_entry.item_type.value == ResumeItemType.education:
-        # Education might not have skills, pass None or empty list
-        serialized_item_content = serialize_education_detail(global_item, field_overrides_dict, resolved_bullets, []) # Pass empty list for skills
+        serialized_item_data_fields = serialize_education(global_item, field_overrides_dict=field_overrides_dict)
 
-    if serialized_item_content:
-        item_detail_scaffold['data'] = serialized_item_content.get('data', {})
-        item_detail_scaffold['bullets'] = serialized_item_content.get('bullets', [])
-        item_detail_scaffold['skills'] = serialized_item_content.get('skills', []) # Get skills from specific serializer
+    if serialized_item_data_fields:
+        item_detail_scaffold['data'] = serialized_item_data_fields
+        item_detail_scaffold['bullets'] = resolved_bullets_list_of_strings 
+        item_detail_scaffold['skills'] = resolved_skills # This is already a list of serialized skill dicts
     else:
         item_detail_scaffold['data']['error'] = f"Serializer not found or failed for item type {resume_item_entry.item_type.value}."
 
     return item_detail_scaffold
 
-def serialize_resume(resume, include_details=False):
-    """Convert a resume object to a dictionary"""
-    result = {
+def serialize_resume(resume: Resume, include_details=False):
+    """Serializes a Resume, optionally including its sections and items."""
+    data = {
         'id': str(resume.id),
         'user_id': str(resume.user_id),
         'title': resume.title,
-        'template_id': str(resume.template_id) if resume.template_id else None,
-        'created_at': resume.created_at.isoformat() if resume.created_at else None
+        'template_id': str(resume.template_id) if resume.template_id is not None else None,
+        'created_at': resume.created_at.isoformat(),
+        'updated_at': resume.updated_at.isoformat(),
+        'sections': []
     }
-    
+
     if include_details:
-        # Add sections with their order
-        ordered_sections = sorted(resume.sections, key=lambda s: s.order_index)
-        result['sections'] = [
-            {
-                'section_type': section.section_type,
-                'order_index': section.order_index
-            }
-            for section in ordered_sections
-        ]
+        serialized_sections = []
+        # Ensure sections are ordered by order_index
+        # The relationship Resume.sections should ideally be ordered.
+        # If not, sort them: sorted_sections = sorted(resume.sections, key=lambda s: s.order_index)
+        # For now, assuming resume.sections is already ordered or can be iterated directly
+        # if eager loaded with order.
         
-        # Add items with their full details
-        ordered_items = sorted(resume.items, key=lambda i: i.order_index)
-        result['items'] = [
-            serialize_resume_item_detail(item_entry)
-            for item_entry in ordered_items
-        ]
-    
-    return result
+        # Explicitly sort sections if not guaranteed by relationship's order_by
+        sorted_sections_list = sorted(resume.sections, key=lambda s: s.order_index)
+
+        for section in sorted_sections_list:
+            # Pass include_items=True to serialize items within each section
+            s_data = serialize_resume_section(section, include_items=True)
+            serialized_sections.append(s_data)
+        data['sections'] = serialized_sections
+    return data
 
 # ResumeItem Management 
 
@@ -342,38 +369,37 @@ def add_item_to_resume(resume_id, data):
         raise ValueError(f"Invalid data for adding item to resume: {str(e)}")
 
 
-def remove_item_from_resume(resume_id, item_type_str, item_id):
-    """Removes a global item from a resume."""
-    resume = Resume.query.get_or_404(resume_id)
+def remove_item_from_resume(resume_id: UUID, item_type_str: str, item_id: UUID):
+    """Removes an item from a resume section."""
     try:
         item_type_enum = ResumeItemType[item_type_str]
     except KeyError:
         raise ValueError(f"Invalid item_type: {item_type_str}")
 
     resume_item = ResumeItem.query.filter_by(
-        resume_id=resume.id,
-        item_type=item_type_enum,
+        resume_id=resume_id,
+        item_type=item_type_enum, # This is the section type
         item_id=item_id
-    ).first_or_404()
+    ).first_or_404(description=f"Item not found in section '{item_type_str}' for this resume.")
     
     try:
-        # ResumeBullets associated with this ResumeItem will be cascade deleted
         db.session.delete(resume_item)
         db.session.commit()
-        return {"message": f"{item_type_str.capitalize()} item removed from resume."}
+        return {"message": "Item removed from resume successfully"}
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error removing item from resume: {str(e)}")
 
 
-def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, data: dict):
+def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, update_data: dict):
     """
     Updates a specific item within a resume.
     The request body 'data' should contain the full desired state of the item's
     content (fields, bullets, skills).
+    'bullets' should be a list of strings, order determined by list index.
     The backend will diff this against the global item to determine overrides.
     """
-    session = db.session  
+    session = db.session
     try:
         item_type_enum = ResumeItemType(item_type_str)
     except ValueError:
@@ -395,13 +421,13 @@ def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, data:
     if not global_item:
         raise ValueError(f"Global {item_type_str} item with ID {item_id} not found.")
 
-    # --- Start Diffing and Updating ---
+    #  Start Diffing and Updating 
     current_field_overrides = dict(resume_item.field_overrides.value if resume_item.field_overrides is not None else {}) # Make a mutable copy
     field_overrides_changed = False
 
     # Submitted data for simple fields (e.g., title, role, dates, desc_long)
     # This comes from data['content']['data'] in the request payload
-    submitted_fields_data = data.get('content', {}).get('data', {})
+    submitted_fields_data = update_data.get('content', {}).get('data', {})
 
     # Dynamically process fields from submitted_fields_data
     for field_name, submitted_value in submitted_fields_data.items():
@@ -434,14 +460,15 @@ def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, data:
     
     if field_overrides_changed:
         if not current_field_overrides: # If all overrides were removed
-            resume_item.field_overrides = {} # Assign an empty dict instead of None
+            resume_item.field_overrides = None
         else:
             resume_item.field_overrides = current_field_overrides
         session.add(resume_item)
 
 
-    # --- Handle Bullet Overrides ---
-    submitted_bullets_data = data.get('content', {}).get('bullets', []) # Expect list of dicts: [{'content': '...', 'order_index': N}, ...]
+    #  Handle Bullet Overrides 
+    # Expect list of strings: ['bullet content 1', 'bullet content 2', ...]
+    submitted_bullets_data = update_data.get('content', {}).get('bullets', []) 
     global_bullets_query = session.query(BulletPoint).filter_by(parent_id=global_item.id, parent_type=global_item.bullet_parent_type).order_by(BulletPoint.order_index)
     
     # Check if submitted bullets differ from global bullets
@@ -451,27 +478,25 @@ def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, data:
         # Clear existing overridden bullets for this ResumeItem
         session.query(ResumeBullet).filter_by(resume_id=resume_item.resume_id, item_type=resume_item.item_type, item_id=resume_item.item_id).delete(synchronize_session=False)
         # Add new overridden bullets
-        for idx, bullet_data in enumerate(submitted_bullets_data):
-            # Ensure bullet_data has 'content'; 'order_index' from submitted data or use loop index
-            order_idx = bullet_data.get('order_index', idx)
-            content = bullet_data.get('content')
-            if content is not None: # Only add bullets with content
+        for idx, bullet_content_str in enumerate(submitted_bullets_data):
+            # 'order_index' is the loop index, 'content' is the string itself
+            if bullet_content_str is not None: # Optionally, add more validation like checking for empty strings
                 new_bullet = ResumeBullet(
                     resume_id=resume_item.resume_id,
                     item_type=resume_item.item_type,
                     item_id=resume_item.item_id,
-                    order_index=order_idx,
-                    content=content
+                    order_index=idx,
+                    content=bullet_content_str
                 )
                 session.add(new_bullet)
     else: # Bullets are same as global, remove any existing overrides
         if session.query(ResumeBullet).filter_by(resume_id=resume_item.resume_id, item_type=resume_item.item_type, item_id=resume_item.item_id).count() > 0:
             session.query(ResumeBullet).filter_by(resume_id=resume_item.resume_id, item_type=resume_item.item_type, item_id=resume_item.item_id).delete(synchronize_session=False)
 
-    # --- Handle Skill Overrides ---
+    #  Handle Skill Overrides 
     # Frontend sends list of skill objects: [{'id': 'skill_uuid', 'name': 'Skill Name'}, ...]
     # We only care about the IDs for diffing and storing.
-    submitted_skill_ids = [skill_data.get('id') for skill_data in data.get('content', {}).get('skills', []) if skill_data.get('id')]
+    submitted_skill_ids = [skill_data.get('id') for skill_data in update_data.get('content', {}).get('skills', []) if skill_data.get('id')]
 
     if hasattr(global_item, 'skills'): # Check if global item type supports skills
         global_skills_query = global_item.skills # Assuming this is the relationship yielding Skill objects
@@ -510,8 +535,11 @@ def update_resume_item(resume_id: UUID, item_type_str: str, item_id: UUID, data:
         joinedload(ResumeItem.overridden_skills)
     ).get(resume_item.id) # Use the primary key of ResumeItem
     
-    assert updated_resume_item_entry is not None
-    
+    if not updated_resume_item_entry:
+        # This case should ideally not happen if the item was just committed
+        # but as a safeguard:
+        raise ValueError(f"Failed to re-fetch ResumeItem with ID {resume_item.id} after update.")
+        
     return serialize_resume_item_detail(updated_resume_item_entry)
 
 def reorder_resume_items(resume_id, order_data):
@@ -584,7 +612,6 @@ def update_resume_sections_order(resume_id: UUID, sections_order_data: list):
             # Depending on desired behavior, this could be an error or just a no-op.
             pass # Or raise ValueError("No matching sections found to reorder.")
 
-
         db.session.commit()
         # Reload or re-fetch resume to get sections in updated order for serialization
         db.session.refresh(resume) 
@@ -598,23 +625,24 @@ def update_resume_sections_order(resume_id: UUID, sections_order_data: list):
         db.session.rollback()
         raise e
 
-# --- Helper functions for diffing ---
+#  Helper functions for diffing 
 
-def _compare_bullet_lists(submitted_bullets_data: list, global_bullets_query):
+def _compare_bullet_lists(submitted_bullet_strings: list[str], global_bullets_query_result: list[BulletPoint]):
     """
-    Compares a list of submitted bullet data (dicts) with a query of global BulletPoint objects.
+    Compares a list of submitted bullet content (strings) with a list of global BulletPoint objects.
     Returns True if they are different, False otherwise.
-    Assumes submitted_bullets_data is like [{'content': '...', 'order_index': 0}, ...]
-    Assumes global_bullets_query is sorted by order_index.
+    Order is determined by list index for submitted_bullet_strings.
+    Assumes global_bullets_query_result is sorted by order_index.
     """
-    global_bullets_list = sorted(list(global_bullets_query), key=lambda b: b.order_index)
+    # global_bullets_list is already sorted by order_index from the query
+    global_bullets_list = global_bullets_query_result
 
-    if len(submitted_bullets_data) != len(global_bullets_list):
+    if len(submitted_bullet_strings) != len(global_bullets_list):
         return True
-    for i, submitted_bullet in enumerate(submitted_bullets_data):
+    for i, submitted_content_str in enumerate(submitted_bullet_strings):
         global_bullet = global_bullets_list[i]
-        # Compare content. Order is implicitly compared by list position after sorting.
-        if submitted_bullet.get('content') != global_bullet.content:
+        # Compare content. Order is implicitly compared by list position.
+        if submitted_content_str != global_bullet.content:
             return True
     return False
 
@@ -628,48 +656,217 @@ def _compare_skill_id_lists(submitted_skill_ids: list, global_skills_query):
 
     return global_skill_id_set != submitted_skill_id_set
 
-# --- Resume Section Management ---
+# ---- ResumeSection specific serialization ----
+def serialize_resume_section(section: ResumeSection, include_items: bool = False):
+    """Serializes a ResumeSection, optionally including its items."""
+    data = {
+        'resume_id': str(section.resume_id),
+        'section_type': section.section_type.value,
+        'title': section.title,
+        'order_index': section.order_index,
+        'items': []
+    }
+    if include_items:
+        # section.items will be ordered by ResumeItem.order_index due to model relationship's order_by
+        for item in section.items: 
+            item_detail = serialize_resume_item_detail(item)
+            if item_detail:
+                data['items'].append(item_detail)
+    return data
 
-def add_section_to_resume(resume_id: UUID, data: dict):
-    """Adds a new section to a resume."""
-    resume = get_or_404(Resume, resume_id, "Resume")
-    
-    title = data.get('title', 'Untitled Section')
-    # Determine the next order_index for the new section
-    max_order_index = db.session.query(db.func.max(ResumeSection.order_index)).filter_by(resume_id=resume_id).scalar()
-    order_index = (max_order_index or -1) + 1
+# ---- ResumeSection CRUD ----
 
-    try:
+def _ensure_section_exists(session: SQLAlchemySession, resume_id: UUID, section_type: ResumeItemType, title: Optional[str] = None, order_index: Optional[int] = None) -> ResumeSection:
+    """
+    Finds an existing section or creates it if it doesn't exist.
+    If creating, title and order_index are required.
+    """
+    section = session.query(ResumeSection).filter_by(
+        resume_id=resume_id,
+        section_type=section_type
+    ).first()
+
+    if not section:
+        if title is None: # Default title if not provided for auto-creation
+            title = section_type.value.replace('_', ' ').capitalize()
+        
+        if order_index is None: # Determine next order_index if not provided
+            max_order = session.query(func.max(ResumeSection.order_index))\
+                .filter_by(resume_id=resume_id)\
+                .scalar()
+            order_index = (max_order + 1) if max_order is not None else 0
+        
         section = ResumeSection(
             resume_id=resume_id,
+            section_type=section_type,
             title=title,
             order_index=order_index
-            # Add other fields like 'layout_type' if your model supports them
         )
-        db.session.add(section)
-        db.session.commit()
-        # Serialize the section - you might need a serialize_resume_section function
-        return {"id": str(section.id), "resume_id": str(section.resume_id), "title": section.title, "order_index": section.order_index}
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        raise ValueError(f"Error adding section to resume: {str(e)}")
+        session.add(section)
+        # Flush to get the section in the session for immediate use if needed by caller.
+        session.flush() 
+    elif title is not None and section.title != title: # Optionally update title if provided and different
+        section.title = title
+        session.flush()
 
-def remove_section_from_resume(resume_id: UUID, section_id: UUID):
-    """Removes a section from a resume."""
-    section = get_or_404(ResumeSection, section_id, "ResumeSection")
-    if section.resume_id != resume_id:
-        raise ValueError("Section does not belong to the specified resume.")
+    return section
+
+
+def create_resume_section(resume_id: UUID, data: dict):
+    """
+    Explicitly creates a new section in a resume or updates its title if it exists.
+    `data` should contain `section_type` (string) and `title` (string).
+    `order_index` is optional; if not provided, it's appended.
+    """
+    resume = Resume.query.get_or_404(resume_id)
     
-    # Consider implications: what happens to ResumeItems in this section?
-    # Option 1: Cascade delete (if model relationship is set up for it)
-    # Option 2: Disassociate/move items (requires more logic)
-    # Option 3: Prevent deletion if section contains items (add check here)
-    # For now, assuming cascade or that items are handled/disallowed at a higher level or by DB constraints.
+    section_type_str = data.get('section_type')
+    title = data.get('title')
+    order_index = data.get('order_index') # Optional for explicit creation
+
+    if not section_type_str or not title:
+        raise ValueError("Missing 'section_type' or 'title' for the section.")
 
     try:
-        db.session.delete(section)
+        section_type_enum = ResumeItemType[section_type_str]
+    except KeyError:
+        raise ValueError(f"Invalid section_type: {section_type_str}. Must be one of {', '.join([e.value for e in ResumeItemType])}.")
+
+    session = db.session
+    try:
+        # Check if section of this type already exists
+        existing_section = session.query(ResumeSection).filter_by(
+            resume_id=resume.id,
+            section_type=section_type_enum
+        ).first()
+
+        if existing_section:
+            # If it exists, update its title and optionally order_index
+            existing_section.title = title
+            if order_index is not None:
+                existing_section.order_index = order_index
+            section_to_serialize = existing_section
+        else:
+            # If it doesn't exist, create it
+            if order_index is None:
+                max_order = session.query(func.max(ResumeSection.order_index))\
+                    .filter_by(resume_id=resume.id)\
+                    .scalar()
+                order_index = (max_order + 1) if max_order is not None else 0
+            
+            new_section = ResumeSection(
+                resume_id=resume.id,
+                section_type=section_type_enum,
+                title=title,
+                order_index=order_index
+            )
+            session.add(new_section)
+            section_to_serialize = new_section
+        
+        session.commit()
+        session.refresh(section_to_serialize) 
+        return serialize_resume_section(section_to_serialize, include_items=False) 
+    except SQLAlchemyError as e:
+        session.rollback()
+        raise ValueError(f"Error creating/updating resume section: {str(e)}")
+
+
+def delete_resume_section(resume_id: UUID, section_type_str: str):
+    """Removes a section (identified by its type) and its items from a resume."""
+    try:
+        section_type_enum = ResumeItemType[section_type_str]
+    except KeyError:
+        raise ValueError(f"Invalid section_type: {section_type_str}")
+
+    section = ResumeSection.query.filter_by(
+        resume_id=resume_id, 
+        section_type=section_type_enum
+    ).first_or_404(description=f"Section of type '{section_type_str}' not found for this resume.")
+    
+    try:
+        db.session.delete(section) # Associated ResumeItems should be cascade deleted due to FK
         db.session.commit()
-        return {"message": "Section removed successfully"}
+        return {"message": f"Resume section '{section_type_str}' deleted successfully"}
     except SQLAlchemyError as e:
         db.session.rollback()
-        raise ValueError(f"Error removing section from resume: {str(e)}")
+        raise ValueError(f"Error deleting resume section '{section_type_str}': {str(e)}")
+
+
+# ---- ResumeItem specific functions ----
+
+def add_item_to_resume_section(
+    resume_id: UUID, 
+    target_section_type_str: str, # e.g., "project", "experience" - this is the section it goes into
+    global_item_id: UUID,         # ID of the Education, Experience, Project object
+    # item_type_of_global_item_str: str, # Type of the global item being added, e.g. "project"
+    data: Optional[dict] = None
+):
+    """
+    Adds a global item to a specific section of a resume.
+    The section is identified by target_section_type_str.
+    If the section doesn't exist, it's created.
+    The item_type of the ResumeItem created will match target_section_type_str.
+    """
+    data = data or {}
+    session = db.session
+    resume = session.query(Resume).get(resume_id)
+    if not resume:
+        raise ValueError(f"Resume with ID {resume_id} not found.")
+
+    try:
+        # This is the type of the section the item will belong to,
+        # and also the item_type for the ResumeItem entry.
+        section_type_enum = ResumeItemType[target_section_type_str]
+    except KeyError:
+        raise ValueError(f"Invalid target_section_type: {target_section_type_str}")
+
+    # Validate the global item exists and its type matches the target section type
+    # (This assumes a "project" global item goes into a "project" section type, etc.)
+    global_item = _get_global_item(section_type_enum, global_item_id) # _get_global_item uses section_type_enum to find the correct global table
+    if not global_item:
+        raise ValueError(f"Global item of type {target_section_type_str} with ID {global_item_id} not found.")
+
+    # Ensure the section exists, or create it
+    # The title for auto-created section can be default or passed in data
+    section_title_for_creation = data.get('section_title', section_type_enum.value.replace('_', ' ').capitalize())
+    target_section = _ensure_section_exists(session, resume_id, section_type_enum, title=section_title_for_creation)
+    # _ensure_section_exists will flush if it creates/updates.
+
+    # Check if item already exists in the section (ResumeItem PK is resume_id, item_type, item_id)
+    existing_resume_item = session.query(ResumeItem).filter_by(
+        resume_id=resume_id,
+        item_type=section_type_enum, # This is the section type
+        item_id=global_item_id
+    ).first()
+
+    if existing_resume_item:
+        raise ValueError(f"Item ID {global_item_id} (type {section_type_enum.value}) already exists in section '{target_section.title}'.")
+
+    # Determine order_index for the new item within its section
+    order_index = data.get('order_index')
+    if order_index is None:
+        max_order = session.query(func.max(ResumeItem.order_index)).filter_by(
+            resume_id=resume_id,
+            item_type=section_type_enum # Order within this specific section type
+        ).scalar()
+        order_index = (max_order + 1) if max_order is not None else 0
+        
+    new_resume_item = ResumeItem(
+        resume_id=resume_id,
+        item_type=section_type_enum, # Links to ResumeSection.section_type
+        item_id=global_item_id,
+        order_index=order_index,
+        field_overrides=data.get('field_overrides') # Pass overrides if provided
+    )
+    
+    try:
+        session.add(new_resume_item)
+        session.commit()
+        # Refresh to get all attributes, especially if defaults are set by DB
+        # and to ensure relationships are fresh if accessed immediately.
+        session.refresh(new_resume_item) 
+        return serialize_resume_item_detail(new_resume_item)
+    except SQLAlchemyError as e:
+        session.rollback()
+        # A more specific error might be useful, e.g., if FK constraint fails
+        raise ValueError(f"Error adding item to resume section: {str(e)}")

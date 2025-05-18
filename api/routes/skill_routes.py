@@ -2,9 +2,9 @@ from flask import Blueprint, request, jsonify
 from api.controllers import skill_controller as ctrl
 from uuid import UUID
 
-skill_bp = Blueprint('skill_bp', __name__, url_prefix='/skills')
+skill_routes = Blueprint('skill_routes', __name__, url_prefix='/skills')
 
-@skill_bp.route('/', methods=['POST'])
+@skill_routes.route('/', methods=['POST'])
 def create_skill():
     data = request.get_json()
     if not data:
@@ -17,7 +17,7 @@ def create_skill():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@skill_bp.route('/<uuid:skill_id>', methods=['GET'])
+@skill_routes.route('/<uuid:skill_id>', methods=['GET'])
 def get_skill(skill_id: UUID):
     try:
         skill = ctrl.get_skill(skill_id)
@@ -27,7 +27,7 @@ def get_skill(skill_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@skill_bp.route('/', methods=['GET'])
+@skill_routes.route('/', methods=['GET'])
 def get_all_skills():
     try:
         category_filter = request.args.get('category')
@@ -36,7 +36,7 @@ def get_all_skills():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@skill_bp.route('/<uuid:skill_id>', methods=['PUT'])
+@skill_routes.route('/<uuid:skill_id>', methods=['PUT'])
 def update_skill(skill_id: UUID):
     data = request.get_json()
     if not data:
@@ -49,7 +49,7 @@ def update_skill(skill_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@skill_bp.route('/<uuid:skill_id>', methods=['DELETE'])
+@skill_routes.route('/<uuid:skill_id>', methods=['DELETE'])
 def delete_skill(skill_id: UUID):
     try:
         result = ctrl.delete_skill(skill_id)

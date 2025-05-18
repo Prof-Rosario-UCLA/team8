@@ -126,7 +126,10 @@ class Education(Base):
     start     = Column(Date)
     end       = Column(Date)
     gpa       = Column(Numeric(3, 2))
-    bullets   = bullet_rel(__qualname__, ParentType.education.value)
+    bullets   = relationship("BulletPoint",
+                            primaryjoin="and_(BulletPoint.parent_id==Education.id, BulletPoint.parent_type=='education')",
+                            cascade="all, delete-orphan",
+                            order_by="BulletPoint.order_index")
     desc_long = Column(Text)
 
 class Experience(Base):
@@ -140,7 +143,10 @@ class Experience(Base):
     end       = Column(Date)
     desc_long = Column(Text)
 
-    bullets = bullet_rel(__qualname__, ParentType.experience.value)
+    bullets = relationship("BulletPoint",
+                            primaryjoin="and_(BulletPoint.parent_id==Experience.id, BulletPoint.parent_type=='experience')",
+                            cascade="all, delete-orphan",
+                            order_by="BulletPoint.order_index")
     skills  = relationship("Skill", secondary=lambda: experience_skills)
 
 class Project(Base):
@@ -153,7 +159,10 @@ class Project(Base):
     end       = Column(Date)
     desc_long = Column(Text)
 
-    bullets = bullet_rel(__qualname__, ParentType.project.value)
+    bullets = relationship("BulletPoint",
+                            primaryjoin="and_(BulletPoint.parent_id==Project.id, BulletPoint.parent_type=='project')",
+                            cascade="all, delete-orphan",
+                            order_by="BulletPoint.order_index")
     skills  = relationship("Skill", secondary=lambda: project_skills)
 
 # ------------------------------------------------------------------ #
@@ -202,23 +211,11 @@ class Resume(Base):
     title       = Column(String)
     template_id = Column(ForeignKey("templates.id"))
     created_at  = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at  = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     template = relationship("Template")
-    sections = relationship("ResumeSection", order_by="ResumeSection.order_index", cascade="all, delete-orphan")
-    items    = relationship("ResumeItem",    cascade="all, delete-orphan")
-
-class ResumeSection(Base):
-    """
-    Draggable top-level section order (projects, experience, etc.).
-    """
-    __tablename__ = "resume_sections"
-    resume_id    = Column(ForeignKey("resumes.id", ondelete="CASCADE"), primary_key=True)
-    section_type = Column(String, primary_key=True)   # 'projects', 'experience', etc.
-    order_index  = Column(Integer, nullable=False)
-
-    __table_args__ = (
-        Index("idx_resume_section_order", "resume_id", "order_index"),
-    )
+    sections = relationship("ResumeSection", cascade="all, delete-orphan", order_by="ResumeSection.order_index")
+    items    = relationship("ResumeItem",    cascade="all, delete-orphan", order_by="ResumeItem.order_index")
 
 # ------------------------------------------------------------------ #
 #  Overlay layer: per-resume items + bullet overrides
@@ -231,6 +228,29 @@ class ResumeItemType(enum.Enum):
     publication= "publication"
     award      = "award"
 
+class ResumeSection(Base):
+    """
+    Represents a typed section within a resume (e.g., "Experience", "Projects").
+    The order of these types is managed by order_index.
+    The title is customizable by the user (e.g., "Work History" for an "experience" type section).
+    """
+    __tablename__ = "resume_sections"
+    resume_id    = Column(ForeignKey("resumes.id", ondelete="CASCADE"), primary_key=True)
+    section_type = Column(Enum(ResumeItemType, name="rs_section_item_type"), primary_key=True) # e.g., experience, project
+    title        = Column(String, nullable=False) # User-defined title, e.g., "Work Experience"
+    order_index  = Column(Integer, nullable=False) # Defines the order of section types
+
+    items = relationship(
+        "ResumeItem",
+        primaryjoin="and_(ResumeItem.resume_id==ResumeSection.resume_id, ResumeItem.item_type==ResumeSection.section_type)",
+        cascade="all, delete-orphan",
+        order_by="ResumeItem.order_index" 
+    )
+
+    __table_args__ = (
+        Index("idx_resume_section_order", "resume_id", "order_index", unique=True), # Order index should be unique per resume
+    )
+
 class ResumeItem(Base):
     """
     Indicates that a global item is included in a resume, with optional
@@ -238,24 +258,29 @@ class ResumeItem(Base):
     """
     __tablename__ = "resume_items"
     resume_id   = Column(ForeignKey("resumes.id", ondelete="CASCADE"), primary_key=True)
-    item_type   = Column(Enum(ResumeItemType, name="resume_item_type"), primary_key=True) # binds to a section of the resume
-    item_id     = Column(UUID(as_uuid=True), primary_key=True)
-    order_index = Column(Integer, nullable=False)
+    item_type   = Column(Enum(ResumeItemType, name="ri_item_type"), primary_key=True) 
+    item_id     = Column(UUID(as_uuid=True), primary_key=True) # ID of the global item (Education, Experience, etc.)
+    order_index = Column(Integer, nullable=False) # Order within its section
 
     # field_overrides will store a JSON object with keys like "title", "role", "description", "start_date", "end_date", etc.
     field_overrides = Column(JSONB, nullable=True) # Replaces custom_desc and allows for more field overrides
 
-    # Relationship to overridden bullets (existing)
-    # bullets = relationship("ResumeBullet", cascade="all, delete-orphan") # This relationship is implicitly handled by FKs on ResumeBullet
+    # Relationship to overridden bullets 
+    bullets = relationship("ResumeBullet", cascade="all, delete-orphan", order_by="ResumeBullet.order_index")
 
-    # Relationship to overridden skills (new)
+    # Relationship to overridden skills 
     overridden_skills = relationship("Skill", secondary=lambda: resume_item_skills, backref="resume_items")
 
     __table_args__ = (
-        Index("idx_resume_items_order", "resume_id", "order_index"),
+        # Foreign key to ResumeSection
+        ForeignKeyConstraint(
+            ["resume_id", "item_type"],
+            ["resume_sections.resume_id", "resume_sections.section_type"],
+            ondelete="CASCADE"
+        ),
+        Index("idx_resume_items_order_in_section", "resume_id", "item_type", "order_index", unique=True),
     )
 
-# New association table for resume-specific skill overrides
 resume_item_skills = Table(
     "resume_item_skills", Base.metadata,
     Column("resume_id", UUID(as_uuid=True), nullable=False),

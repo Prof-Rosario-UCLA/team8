@@ -86,7 +86,7 @@ def add_section_to_resume_route(resume_id: UUID):
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
     try:
-        section = resume_controller.add_section_to_resume(resume_id, data)
+        section = resume_controller.create_resume_section(resume_id, data)
         return jsonify(section), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -95,14 +95,14 @@ def add_section_to_resume_route(resume_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred"}), 500
 
-@resume_routes.route('/<uuid:resume_id>/sections/<uuid:section_id>', methods=['DELETE'])
-def remove_section_from_resume_route(resume_id: UUID, section_id: UUID):
-    """Remove a section from a resume."""
+@resume_routes.route('/<uuid:resume_id>/sections/<string:section_type_str>', methods=['DELETE'])
+def remove_section_from_resume_route(resume_id: UUID, section_type_str: str):
+    """Remove a section from a resume by its type string."""
     try:
-        result = resume_controller.remove_section_from_resume(resume_id, section_id)
+        result = resume_controller.delete_resume_section(resume_id, section_type_str)
         return jsonify(result), 200
-    except ValueError as e: # Handles 404
-        return jsonify({"error": str(e)}), 404
+    except ValueError as e: # Handles 404 or invalid type
+        return jsonify({"error": str(e)}), 400 if "not found" not in str(e).lower() else 404
     except SQLAlchemyError as e:
         return jsonify({"error": f"Database error: {str(e)}"}), 500
     except Exception as e:
@@ -187,6 +187,8 @@ def reorder_resume_items_route(resume_id: UUID):
     data = request.get_json()
     if not data or 'items' not in data or not isinstance(data['items'], list):
         return jsonify({"error": "Request body must be JSON with an 'items' list"}), 400
+    if 'items_type' not in data or not isinstance(data['items_type'], str):
+        return jsonify({"error": "Request body must contain 'items_type' with a string value."}), 400
     try:
         updated_resume = resume_controller.reorder_resume_items(resume_id, data)
         return jsonify(updated_resume), 200

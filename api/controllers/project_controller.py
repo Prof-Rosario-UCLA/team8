@@ -9,73 +9,60 @@ from .bullet_point_controller import serialize_bullet_point
 from .utils import get_or_404, get_resolved_field
 import datetime
 
-def serialize_project(project: Project, include_bullets=False, include_skills=False):
-    data = {
-        'id': str(project.id),
-        'user_id': str(project.user_id),
-        'title': project.title,
-        'role': project.role,
-        'start_date': project.start.isoformat() if project.start is not None else None,
-        'end_date': project.end.isoformat() if project.end is not None else None,
-        # 'description': project.description_field, # Description later for LLM to get context
-    }
-    if include_bullets:
-        data['bullets'] = [{'order_index': b.order_index, 'content': b.content, 'id': str(b.id)} for b in project.bullets]
-    if include_skills:
-        data['skills'] = [{'id': str(s.id), 'name': s.name} for s in project.skills]
-    return data
-
-def serialize_project_detail(
-    project_instance: Project,
+def serialize_project(
+    project_instance: Project, 
     field_overrides_dict: Optional[dict] = None,
-    bullets_list: Optional[List] = None,
-    skills_list: Optional[List] = None
+    include_bullets_if_no_override: bool = False,
+    include_skills_if_no_override: bool = False
     ):
     """
-    Serializes a Project instance for detailed view within a resume context.
-    Applies field overrides and uses pre-resolved bullets and skills.
+    Serializes a Project instance.
+    If field_overrides_dict is provided, applies overrides and returns only resolved data fields.
+    Otherwise, serializes global data and can include bullets/skills based on flags.
     """
     if not project_instance:
         return None
 
     overrides = field_overrides_dict or {}
+    is_resume_context = bool(field_overrides_dict)
 
     data = {
         'id': str(project_instance.id),
         'user_id': str(project_instance.user_id),
-        'title': get_resolved_field(project_instance, overrides, 'title'),
-        'role': get_resolved_field(project_instance, overrides, 'role'),
-        'desc_long': get_resolved_field(project_instance, overrides, 'desc_long')
+        'title': get_resolved_field(project_instance, overrides, 'title', project_instance.title),
+        'role': get_resolved_field(project_instance, overrides, 'role', project_instance.role),
+        'desc_long': get_resolved_field(project_instance, overrides, 'desc_long', project_instance.desc_long)
     }
     
-    # Handle dates
-    raw_start_date = get_resolved_field(project_instance, overrides, 'start')
+    raw_start_date = get_resolved_field(project_instance, overrides, 'start', project_instance.start)
     if isinstance(raw_start_date, (datetime.date, datetime.datetime)):
         data['start'] = raw_start_date.isoformat()
     else:
         data['start'] = raw_start_date
 
-    raw_end_date = get_resolved_field(project_instance, overrides, 'end')
+    raw_end_date = get_resolved_field(project_instance, overrides, 'end', project_instance.end)
     if isinstance(raw_end_date, (datetime.date, datetime.datetime)):
         data['end'] = raw_end_date.isoformat()
     else:
         data['end'] = raw_end_date
     
-    return {
-        "data": data,
-        "bullets": bullets_list if bullets_list is not None else [],
-        "skills": skills_list if skills_list is not None else []
-    }
+    if not is_resume_context:
+        if include_bullets_if_no_override:
+            data['bullets'] = [b.content for b in project_instance.bullets]
+        if include_skills_if_no_override:
+            data['skills'] = [{'id': str(s.id), 'name': s.name, 'category': s.category.value if s.category else None} for s in project_instance.skills]
+            
+    return data
 
 # CRUD Functions for Project 
 
-def create_project(user_id, data):
+def create_project(user_id: UUID, data: dict):
     """Creates a new project entry for a user."""
     user = User.query.get_or_404(user_id)
     try:
         project = Project(
             user_id=user.id,
-            title=data['title'],
+            title=data.get('title'),
             role=data.get('role'),
             start=data.get('start_date'),
             end=data.get('end_date'),
@@ -83,9 +70,11 @@ def create_project(user_id, data):
             # description_field=data.get('description') # If added
         )
         db.session.add(project)
-        db.session.commit() # Commit to get project.id
+        db.session.flush() # To get project.id for bullets
 
         if 'bullets' in data and isinstance(data['bullets'], list):
+            if not all(isinstance(b, str) for b in data['bullets']):
+                raise ValueError("All items in 'bullets' list must be strings.")
             for idx, bullet_content in enumerate(data['bullets']):
                 db.session.add(BulletPoint(parent_id=project.id, parent_type=ParentType.project, order_index=idx, content=bullet_content))
         
@@ -96,7 +85,7 @@ def create_project(user_id, data):
                     project.skills.append(skill)
         
         db.session.commit()
-        return serialize_project(project, include_bullets=True, include_skills=True)
+        return serialize_project(project) # Ensure this serializes bullets as an ordered list
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error creating project: {str(e)}")
@@ -106,34 +95,41 @@ def create_project(user_id, data):
 
 
 def get_project(project_id, include_bullets=False, include_skills=False):
-    """Gets a specific project entry by ID."""
-    query = Project.query
+    """Retrieves a specific project entry."""
+    options = []
     if include_bullets:
-        query = query.options(joinedload(Project.bullets))
+        options.append(joinedload(Project.bullets))
     if include_skills:
-        query = query.options(joinedload(Project.skills))
-    project = query.get_or_404(project_id)
-    return serialize_project(project, include_bullets=include_bullets, include_skills=include_skills)
+        options.append(joinedload(Project.skills))
+        
+    project = Project.query.options(*options).get_or_404(project_id)
+    return serialize_project(
+        project, 
+        include_bullets_if_no_override=include_bullets, 
+        include_skills_if_no_override=include_skills
+    )
 
 
 def get_all_projects_for_user(user_id, include_bullets=False, include_skills=False):
-    """Gets all project entries for a specific user."""
+    """Retrieves all project entries for a given user."""
     user = User.query.get_or_404(user_id)
-    query = Project.query.filter_by(user_id=user.id)
+    options = []
     if include_bullets:
-        query = query.options(joinedload(Project.bullets))
+        options.append(joinedload(Project.bullets))
     if include_skills:
-        query = query.options(joinedload(Project.skills))
-    projects = query.order_by(Project.start.desc().nullslast(), Project.end.desc().nullslast()).all()
-    return [serialize_project(p, include_bullets=include_bullets, include_skills=include_skills) for p in projects]
+        options.append(joinedload(Project.skills))
+        
+    projects = Project.query.options(*options).filter_by(user_id=user_id).all()
+    return [serialize_project(
+                proj, 
+                include_bullets_if_no_override=include_bullets, 
+                include_skills_if_no_override=include_skills
+            ) for proj in projects]
 
 
-def update_project(project_id, data):
+def update_project(project_id: UUID, data: dict):
     """Updates an existing project entry."""
-    project = Project.query.options(
-        joinedload(Project.bullets), 
-        joinedload(Project.skills)
-    ).get_or_404(project_id)
+    project = get_or_404(Project, project_id, "Project")
     try:
         if 'title' in data: project.title = data['title']
         if 'role' in data: project.role = data['role']
@@ -142,10 +138,16 @@ def update_project(project_id, data):
         if 'desc_long' in data: project.desc_long = data['desc_long']
         # if 'description' in data: project.description_field = data['description']
 
-        if 'bullets' in data and isinstance(data['bullets'], list):
-            BulletPoint.query.filter_by(parent_id=project.id, parent_type=ParentType.project).delete()
+        if 'bullets' in data: # If 'bullets' key is present, we replace all existing bullets
+            if not isinstance(data['bullets'], list) or not all(isinstance(b, str) for b in data['bullets']):
+                raise ValueError("If 'bullets' is provided for update, it must be a list of strings.")
+            
+            # Delete existing bullets
+            BulletPoint.query.filter_by(parent_id=project.id, parent_type=ParentType.project.value).delete()
+            # Add new bullets
             for idx, bullet_content in enumerate(data['bullets']):
-                db.session.add(BulletPoint(parent_id=project.id, parent_type=ParentType.project, order_index=idx, content=bullet_content))
+                if bullet_content: # Add only non-empty bullets
+                    db.session.add(BulletPoint(parent_id=project.id, parent_type=ParentType.project.value, order_index=idx, content=bullet_content))
 
         if 'skill_ids' in data and isinstance(data['skill_ids'], list):
             project.skills.clear()
@@ -156,7 +158,7 @@ def update_project(project_id, data):
         
         db.session.commit()
         updated_project = Project.query.options(joinedload(Project.bullets), joinedload(Project.skills)).get(project_id)
-        return serialize_project(updated_project, include_bullets=True, include_skills=True)
+        return serialize_project(updated_project, include_bullets_if_no_override=True, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error updating project: {str(e)}")
@@ -175,25 +177,25 @@ def delete_project(project_id):
 
 # --- Skill Association for Project ---
 def add_skill_to_project(project_id, skill_id):
-    project = Project.query.get_or_404(project_id)
+    project = Project.query.options(joinedload(Project.skills)).get_or_404(project_id)
     skill = Skill.query.get_or_404(skill_id)
     try:
         if skill not in project.skills:
             project.skills.append(skill)
             db.session.commit()
-        return serialize_project(project, include_skills=True)
+        return serialize_project(project, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error adding skill to project: {str(e)}")
 
 def remove_skill_from_project(project_id, skill_id):
-    project = Project.query.get_or_404(project_id)
+    project = Project.query.options(joinedload(Project.skills)).get_or_404(project_id)
     skill = Skill.query.get_or_404(skill_id)
     try:
         if skill in project.skills:
             project.skills.remove(skill)
             db.session.commit()
-        return serialize_project(project, include_skills=True)
+        return serialize_project(project, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error removing skill from project: {str(e)}") 

@@ -33,8 +33,8 @@ This document outlines the architecture and business logic behind customizing re
             *   Only these differing fields are stored as key-value pairs in the `field_overrides` JSONB column of the `ResumeItem`.
             *   If a user changes an overridden field *back to its original global value*, the backend removes that specific key from the `field_overrides` JSONB. This ensures `field_overrides` only contains active deviations.
         *   **Bullet Point Overrides (`ResumeBullet` Table):**
-            *   The submitted list of bullets (content and order) is compared to the global item's bullets.
-            *   If they differ (in content or order), any existing `ResumeBullet` records for this `ResumeItem` are deleted, and new `ResumeBullet` records are created to store the *entire submitted list*.
+            *   The submitted list of bullet strings (where order is determined by the list index) is compared to the global item's bullets.
+            *   If they differ, any existing `ResumeBullet` records for this `ResumeItem` are deleted, and new `ResumeBullet` records are created to store the *entire submitted list of bullet strings*, with their order preserved.
             *   If the submitted bullet list becomes identical to the global item's bullets, all `ResumeBullet` records for this `ResumeItem` are deleted, effectively reverting to the global bullets.
         *   **Skill Overrides (`resume_item_skills` Association Table):**
             *   The submitted list of skill IDs is compared to the skills associated with the global item.
@@ -45,7 +45,7 @@ This document outlines the architecture and business logic behind customizing re
     *   When a resume is fetched (e.g., via `GET /resumes/<resume_id>`), the backend serializes each `ResumeItem`.
     *   For each item, it starts with the data from the corresponding global item.
     *   It then applies any values found in `ResumeItem.field_overrides`.
-    *   If `ResumeBullet` records exist for the `ResumeItem`, those are used; otherwise, the global item's bullets are used.
+    *   If `ResumeBullet` records exist for the `ResumeItem`, their content strings are used (ordered by `order_index`); otherwise, the global item's bullet content strings are used (ordered by `order_index`). The `bullets` field in the serialized output will be a list of these strings.
     *   If skill associations exist in `resume_item_skills` for the `ResumeItem`, those are used; otherwise, the global item's skills are used.
     *   The `desc_long` field is the primary description field. The frontend can implement fallback logic (e.g., using `title` for projects if `desc_long` is empty) if needed for display.
 
@@ -58,7 +58,9 @@ This document outlines the architecture and business logic behind customizing re
 
 *   **Updating a Specific Item in a Resume:**
     *   `PUT /resumes/<resume_id>/items/<item_type_str>/<global_item_id>`
-    *   Payload: The full JSON representation of the `ResumeItem` as the user currently sees it (including all fields, bullets, skills).
+    *   Payload: The full JSON representation of the `ResumeItem` as the user currently sees it.
+        *   The `content.bullets` field should be a list of strings, e.g., `["Bullet point 1", "Bullet point 2"]`.
+        *   Example: `{"content": {"data": {"title": "Updated Title"}, "bullets": ["New bullet 1", "New bullet 2"], "skills": [{"id": "skill_uuid"}]}}`
     *   Action: Backend performs diffing and updates `field_overrides`, `ResumeBullet`s, and `resume_item_skills` as described above.
 
 *   **Removing an Item from a Resume:**

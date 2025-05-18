@@ -29,87 +29,57 @@ A key feature is the **override system** (detailed in `api/controllers/README.md
 
 When an item is updated, the frontend sends the **full desired state** of the item for that resume. The backend then diffs this against the global item to update the overrides.
 
-### Resume Management
+## API Endpoints for Resume Management
 
-#### 1. Get All Resumes
-*   **Endpoint:** `GET /resumes`
-*   **Query Parameters:**
-    *   `user_id` (optional, UUID): Filters resumes by the specified user.
-*   **Action:** Retrieves a list of all resumes, or resumes filtered by `user_id`.
+### 1. Overall Resume Structure (`GET /resumes/<uuid:resume_id>`)
+
+*   **Action:** Fetches the complete structure of a specific resume, including its ordered sections and the items within those sections (with overrides applied).
 *   **Success Response (200 OK):**
-    ```json
-    [
-      {
-        "id": "<resume_uuid>",
-        "user_id": "<user_uuid>",
-        "title": "Software Engineer Resume",
-        "template_id": "<template_uuid>",
-        "created_at": "iso_timestamp",
-        "updated_at": "iso_timestamp"
-        // ... other resume fields ...
-      }
-      // ... more resumes ...
-    ]
-    ```
-
-#### 2. Create a New Resume
-*   **Endpoint:** `POST /resumes`
-*   **Payload:**
-    ```json
-    {
-      "user_id": "<user_uuid>",
-      "title": "My New Resume",
-      "template_id": "<template_uuid>" // Optional
-    }
-    ```
-*   **Action:** Creates a new resume record.
-*   **Success Response (201 Created):** The newly created resume object.
-    ```json
-    {
-      "id": "<new_resume_uuid>",
-      "user_id": "<user_uuid>",
-      "title": "My New Resume",
-      "template_id": "<template_uuid>",
-      // ... other fields ...
-    }
-    ```
-
-#### 3. Get a Specific Resume
-*   **Endpoint:** `GET /resumes/<uuid:resume_id>`
-*   **Action:** Retrieves a specific resume by its ID, including its sections and fully resolved items (global data + overrides).
-*   **Success Response (200 OK):** Detailed resume object.
     ```json
     {
       "id": "<resume_uuid>",
-      "title": "Data Scientist Resume",
       "user_id": "<user_uuid>",
+      "title": "My Software Engineering Resume",
       "template_id": "<template_uuid>",
-      // ... other resume fields ...
+      "created_at": "YYYY-MM-DDTHH:MM:SSZ",
+      "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
       "sections": [
         {
-          "id": "<section_uuid>",
-          "title": "Experience",
+          "resume_id": "<resume_uuid>",
+          "section_type": "experience", // e.g., "experience", "project", "education"
+          "title": "Work Experience",     // User-defined title for this section
           "order_index": 0,
           "items": [
             {
-              "resume_item_id": "<resume_item_uuid>", // ID of the ResumeItem link
-              "item_id": "<global_experience_id>",    // ID of the global Experience record
-              "item_type": "experience",
-              "order_index": 0,
-              "content": { // Fully resolved content
-                "title": "Senior Developer (Resume Specific Title)",
+              "resume_id": "<resume_uuid>",
+              "item_type": "experience", // Matches the section_type
+              "item_id": "<global_experience_id_1>", // ID of the global Experience record
+              "order_index": 0, // Order of this item within the "experience" section
+              "data": {
+                "id": "<global_experience_id_1>",
+                "user_id": "<user_uuid>",
+                "role": "Senior Developer (Resume Specific Title)",
                 "company": "Tech Solutions Inc.",
-                "date_start": "2020-01-01",
                 // ... all other fields for experience, resolved with overrides ...
-                "bullets": [
-                  {"content": "Custom bullet for this resume.", "order_index": 0}
-                ],
-                "skills": [
-                  {"id": "<skill_uuid>", "name": "Custom Skill Set"}
-                ]
-              }
+              },
+              "bullets": [
+                "Custom bullet for this resume.",
+                "Another tailored bullet point."
+              ],
+              "skills": [
+                {"id": "<skill_uuid_A>", "name": "Custom Skill A", "category": "framework"}
+              ]
             }
-            // ... more items in section ...
+            // ... more items in this section ...
+          ]
+        },
+        {
+          "resume_id": "<resume_uuid>",
+          "section_type": "project",
+          "title": "Personal Projects",
+          "order_index": 1,
+          "items": [
+            // ... project items ...
           ]
         }
         // ... more sections ...
@@ -117,209 +87,170 @@ When an item is updated, the frontend sends the **full desired state** of the it
     }
     ```
 
-#### 4. Update Resume Metadata
-*   **Endpoint:** `PUT /resumes/<uuid:resume_id>`
-*   **Payload:** (Fields are optional; only provided fields will be updated)
-    ```json
-    {
-      "title": "Updated Resume Title",
-      "template_id": "<new_template_uuid>"
-    }
-    ```
-*   **Action:** Updates the metadata (e.g., title, template) of a specific resume.
-*   **Success Response (200 OK):** The updated resume object.
+### 2. CRUD for Resumes
 
-#### 5. Delete a Resume
-*   **Endpoint:** `DELETE /resumes/<uuid:resume_id>`
-*   **Action:** Deletes a specific resume and all its associated data (sections, resume items, overrides) due to cascading deletes in the database.
-*   **Success Response (200 OK):**
-    ```json
-    {
-      "message": "Resume deleted successfully"
-    }
-    ```
+*   **`GET /resumes`**: List all resumes (can be filtered by `user_id` query param).
+*   **`POST /resumes`**: Create a new resume.
+    *   Payload: `{"user_id": "<user_uuid>", "title": "New Resume", "template_id": "<template_uuid_optional>"}`
+    *   Response: Serialized new resume.
+*   **`PUT /resumes/<uuid:resume_id>`**: Update resume metadata (e.g., title, template).
+    *   Payload: `{"title": "Updated Resume Title", "template_id": "<new_template_uuid>"}`
+    *   Response: Serialized updated resume.
+*   **`DELETE /resumes/<uuid:resume_id>`**: Delete a resume.
+    *   Response: `{"message": "Resume deleted successfully"}`
 
-### Resume Section Management
+### 3. Managing Resume Sections
 
-#### 1. Add a New Section to a Resume
+Sections are distinct parts of a resume like "Experience," "Education," "Projects." Each section has a `section_type` (which must be one of the `ResumeItemType` enum values like "experience", "project", etc.) and a user-defined `title`. A resume can only have one section of a given `section_type`. The order of these sections is managed separately.
+
+#### a. Create or Update a Section
 *   **Endpoint:** `POST /resumes/<uuid:resume_id>/sections`
+*   **Action:** Creates a new section in the resume or updates the title of an existing section if one with the given `section_type` already exists.
 *   **Payload:**
     ```json
     {
-      "title": "New Section Title"
-      // "layout_type": "optional_layout_identifier" // If supported
+      "section_type": "experience", // e.g., "project", "education". Must be a valid ResumeItemType.
+      "title": "Professional Experience",  // User-defined title for this section
+      "order_index": 0 // Optional: if not provided, appends to the end. If provided for existing, updates order.
     }
     ```
-*   **Action:** Creates a new section within the specified resume. The `order_index` is typically assigned automatically.
-*   **Success Response (201 Created):** The newly created section object.
+*   **Success Response (201 Created or 200 OK):** The serialized resume section.
     ```json
     {
-      "id": "<new_section_uuid>",
       "resume_id": "<resume_uuid>",
-      "title": "New Section Title",
-      "order_index": 2 // Example
+      "section_type": "experience",
+      "title": "Professional Experience",
+      "order_index": 0,
+      "items": [] // New sections are initially empty
     }
     ```
 
-#### 2. Remove a Section from a Resume
-*   **Endpoint:** `DELETE /resumes/<uuid:resume_id>/sections/<uuid:section_id>`
-*   **Action:** Removes a section from a resume.
-    *   **Internal Note:** The controller logic needs to define how `ResumeItem`s within this section are handled (e.g., cascade delete, disassociate, prevent deletion if items exist). Currently, it assumes cascade or that items are handled/disallowed at a higher level.
+#### b. Delete a Section
+*   **Endpoint:** `DELETE /resumes/<uuid:resume_id>/sections/<string:section_type_str>`
+    *   `section_type_str`: The type of the section to delete (e.g., "experience", "project").
+*   **Action:** Removes the specified section and all its `ResumeItem` entries from the resume.
 *   **Success Response (200 OK):**
     ```json
     {
-      "message": "Section removed successfully"
+      "message": "Resume section 'experience' deleted successfully"
     }
     ```
 
-#### 3. Update the Order of Sections within a Resume
+#### c. Reorder Sections
 *   **Endpoint:** `PUT /resumes/<uuid:resume_id>/sections/order`
-*   **Payload:** A list defining the new order of sections.
+*   **Action:** Updates the display order of sections within the resume.
+*   **Payload:** A list of section type strings in the desired order.
     ```json
     [
-      { "id": "<section_id_1>", "order_index": 0 },
-      { "id": "<section_id_2>", "order_index": 1 }
-      // ... more sections with their new order_index ...
+      "experience", // This section_type will now have order_index 0
+      "project",    // This section_type will now have order_index 1
+      "education"   // This section_type will now have order_index 2
+      // ... other section types ...
     ]
     ```
-*   **Action:** Updates the `order_index` for each `ResumeSection` record associated with the resume.
-*   **Success Response (200 OK):** The updated resume object with reordered sections.
+*   **Success Response (200 OK):** The full serialized resume with sections in the new order.
 
-### Resume Item Management
+### 4. Managing Items within a Resume Section
 
-These endpoints manage individual items (Education, Experience, Project, etc.) within a resume.
+`ResumeItem` entries link global items (like a specific `Project` or `Experience` record) to a resume, allowing for overrides.
 
-#### 1. Add a Global Item to a Resume
-*   **Endpoint:** `POST /resumes/<uuid:resume_id>/items`
+#### a. Add a Global Item to a Resume Section
+*   **Endpoint:** `POST /resumes/<uuid:resume_id>/sections/<string:target_section_type_str>/items`
+    *   `target_section_type_str`: The type of the section where the item should be added (e.g., "project", "experience"). This also defines the `item_type` of the `ResumeItem` created.
+*   **Action:** Adds a reference to a global item into the specified section of the resume. If the section doesn't exist, it's created with a default title.
 *   **Payload:**
     ```json
     {
-      "item_type": "project", // e.g., "education", "experience", "project"
-      "item_id": "<global_project_id>", // UUID of the global item
-      "section_id": "<section_uuid>" // UUID of the resume section to add this item to
-      // "order_index": 0 // Optional: if not provided, item is added to the end
+      "global_item_id": "<uuid_of_global_project_or_experience_etc>",
+      // Optional:
+      // "order_index": 1, // Specific order within the section. Appends if omitted.
+      // "section_title": "Custom Title for Auto-Created Section" // Used if section is auto-created
+      // "field_overrides": { "title": "Override title for this resume" } // Initial field overrides
     }
     ```
-*   **Action:** Creates a `ResumeItem` record, linking the specified global item to the resume and placing it in the given section. Initially, this item has no overrides.
-*   **Success Response (201 Created):** Details of the newly created `ResumeItem` link, often including the resolved content of the item.
+*   **Success Response (201 Created):** The serialized `ResumeItem` detail as it appears in the resume.
     ```json
     {
-      "resume_item_id": "<new_resume_item_uuid>",
+      "resume_id": "<resume_uuid>",
+      "item_type": "project", // Matches target_section_type_str
       "item_id": "<global_project_id>",
-      "item_type": "project",
-      "section_id": "<section_uuid>",
       "order_index": 0,
-      "content": { /* ... resolved content of the global project ... */ }
+      "data": { /* ... resolved data of the global project, potentially with initial overrides ... */ },
+      "bullets": [ /* ... list of bullet strings (initially from global or empty if overridden) ... */ ],
+      "skills": [ /* ... list of skill objects (initially from global or empty if overridden) ... */ ]
     }
     ```
 
-#### 2. Update a Specific Item in a Resume (Override System)
-*   **Endpoint:** `PUT /resumes/<uuid:resume_id>/items/<item_type_str>/<uuid:item_id>`
-    *   `item_type_str`: e.g., "education", "experience", "project"
-    *   `item_id`: UUID of the *global* item being customized.
-*   **Payload:** The **full desired state** of the item's content *for this resume*. The structure must be `{"content": {"data": {...}}}`.
+#### b. Update/Customize an Item in a Resume
+*   **Endpoint:** `PUT /resumes/<uuid:resume_id>/items/<string:item_type_str>/<uuid:global_item_id>`
+    *   `item_type_str`: The type of the item/section (e.g., "education", "experience", "project").
+    *   `global_item_id`: UUID of the *global* item being customized.
+*   **Payload:** The full desired state of the item's content *for this resume*.
+    *   The `bullets` field should be a list of strings. Order is determined by the list sequence.
     ```json
     {
-      "content": {
+      "content": { // The key "content" wraps the data, bullets, and skills
         "data": {
-          // --- Common fields ---
-          "title": "Resume-Specific Title for Project X", // Overridden
-          "organization": "Global Org Name", // Not overridden, matches global
-          "location": "New Location for Resume", // Overridden
-          "date_start": "2022-01-01",
-          "date_end": "2022-12-31",
-          "desc_short": "Short description for resume.", // Overridden
-          "desc_long": "A very detailed long description tailored for this specific resume application, highlighting different aspects than the global version.", // Overridden
-          
-          // --- Bullets (Full list for this resume) ---
-          "bullets": [
-            { "content": "Custom bullet point 1 for this resume.", "order_index": 0 },
-            { "content": "Custom bullet point 2, different from global.", "order_index": 1 }
-          ],
-          
-          // --- Skills (Full list of skill UUIDs for this resume) ---
-          "skills": [
-            "<skill_uuid_A>", // Skill A is relevant for this resume
-            "<skill_uuid_C>"  // Skill C is also relevant
-            // Global item might have had Skill A and Skill B. Skill B is omitted here.
-          ]
-          // ... any other fields relevant to the item_type ...
-        }
+          "title": "Updated Project Title for Resume",
+          "desc_long": "A resume-specific description."
+          /* ... other overridable fields for this item_type ... */
+        },
+        "bullets": [
+          "Custom bullet point 1 for this resume",
+          "Custom bullet point 2, rephrased for impact"
+        ],
+        "skills": [ // List of skill objects (only 'id' is strictly needed for association)
+          { "id": "<skill_uuid_1>" },
+          { "id": "<skill_uuid_2>" }
+        ]
       }
     }
     ```
-*   **Action (Internal):**
-    1.  Retrieves the `ResumeItem` linking `resume_id` and `item_id` (global item ID).
-    2.  Retrieves the corresponding global item (e.g., `Project` with `item_id`).
-    3.  **Diffs Field Overrides:** Compares each field in the payload's `data` (e.g., `title`, `desc_long`) with the global item's fields.
-        *   If a submitted field differs, it's added/updated in `ResumeItem.field_overrides` (JSONB).
-        *   If a submitted field matches the global item's value (and was previously overridden), it's removed from `field_overrides`.
-    4.  **Diffs Bullet Points:** Compares the submitted `bullets` list (content and order) with the global item's bullets.
-        *   If different, existing `ResumeBullet`s for this `ResumeItem` are deleted, and new ones are created from the payload.
-        *   If identical to global, `ResumeBullet`s are deleted (reverting to global).
-    5.  **Diffs Skills:** Compares the submitted `skills` list (of UUIDs) with the global item's skills.
-        *   If different, existing `resume_item_skills` associations for this `ResumeItem` are cleared, and new ones are created from the payload.
-        *   If identical to global, `resume_item_skills` associations are cleared (reverting to global).
-*   **Success Response (200 OK):** The updated `ResumeItem` details, reflecting the newly applied overrides and resolved content.
+*   **Action:** The backend compares the submitted `content` (data fields, bullets, skills) with the global item.
+    *   Differences in fields are stored/updated in `ResumeItem.field_overrides`.
+    *   If submitted bullets differ from global bullets, existing `ResumeBullet`s for this item are replaced with the new list.
+    *   If submitted skills differ from global skills, `resume_item_skills` associations are updated.
+    *   If any part (fields, bullets, or skills) is submitted identically to the global version, corresponding overrides are removed.
+*   **Success Response (200 OK):** The fully resolved (global data + overrides) and updated resume item.
     ```json
     {
-      "resume_item_id": "<resume_item_uuid>",
-      "item_id": "<global_item_id>",
+      "resume_id": "<resume_uuid>",
       "item_type": "project",
-      // ... other fields ...
-      "content": { /* ... fully resolved content after updates ... */ }
+      "item_id": "<global_item_id>",
+      "order_index": 0, // Its current order_index
+      "data": { /* ... fully resolved content fields after updates ... */ },
+      "bullets": [ /* ... list of bullet strings after updates ... */ ],
+      "skills": [ /* ... list of skill objects after updates ... */ ]
     }
     ```
 
-#### 3. Remove an Item from a Resume
-*   **Endpoint:** `DELETE /resumes/<uuid:resume_id>/items/<item_type_str>/<uuid:item_id>`
-     *   `item_type_str`: e.g., "education", "experience", "project"
-     *   `item_id`: UUID of the *global* item.
-*   **Action:** Deletes the `ResumeItem` record. This also removes associated `ResumeBullet`s and `resume_item_skills` entries due to cascading deletes. The global item itself is unaffected.
+#### c. Remove an Item from a Resume Section
+*   **Endpoint:** `DELETE /resumes/<uuid:resume_id>/items/<string:item_type_str>/<uuid:global_item_id>`
+    *   `item_type_str`: The type of the item/section (e.g., "experience", "project").
+    *   `global_item_id`: UUID of the global item to remove from this resume.
+*   **Action:** Removes the `ResumeItem` (and its associated `ResumeBullet`s and skill overrides) from the resume. The global item itself is not deleted.
 *   **Success Response (200 OK):**
-     ```json
-     {
-       "message": "Item removed from resume successfully"
-     }
-     ```
+    ```json
+    {
+      "message": "Item removed from resume successfully"
+    }
+    ```
 
-#### 4. Reorder Items within a Resume
+#### d. Reorder Items within a Section
 *   **Endpoint:** `PUT /resumes/<uuid:resume_id>/items/order`
-*   **Payload:** A list defining the new order of items. Each object in the list identifies an item and its new `order_index` and potentially new `section_id`.
-     ```json
-     {
-       "items": [
-         {
-           "item_type": "project", // Type of the global item
-           "item_id": "<global_project_id_1>", // UUID of the global item
-           "order_index": 0,
-           "section_id": "<section_uuid_A>" // Item moved to or within this section
-         },
-         {
-           "item_type": "experience",
-           "item_id": "<global_experience_id_1>",
-           "order_index": 1,
-           "section_id": "<section_uuid_A>"
-         },
-         {
-           "item_type": "education",
-           "item_id": "<global_education_id_1>",
-           "order_index": 0, // Order index is per section
-           "section_id": "<section_uuid_B>"
-         }
-         // ... more items ...
-       ]
-     }
-     ```
-*   **Action:** Updates the `order_index` and `section_id` on the `ResumeItem` records. The backend needs to find the correct `ResumeItem` based on `resume_id`, `item_type`, and `item_id`.
-*   **Success Response (200 OK):** The updated resume object or a success message.
-     ```json
-     {
-       "id": "<resume_uuid>",
-       "title": "My Reordered Resume",
-       // ... full resume structure with reordered items ...
-     }
-     ```
+*   **Action:** Updates the order of items *within their respective sections*. The payload specifies the new order for items of a particular type.
+*   **Payload:**
+    ```json
+    {
+      "item_type": "project", // The type of items being reordered
+      "ordered_ids": [ // List of global_item_ids in their new desired order for this section type
+        "<global_project_id_3>",
+        "<global_project_id_1>",
+        "<global_project_id_2>"
+      ]
+    }
+    ```
+*   **Success Response (200 OK):** The full serialized resume with items in the new order.
 
 ### Error Handling
 

@@ -3,9 +3,9 @@ from api.controllers import user_controller as ctrl
 from uuid import UUID
 from api.controllers import website_controller as website_ctrl
 
-user_bp = Blueprint('user_bp', __name__, url_prefix='/users')
+user_routes = Blueprint('user_routes', __name__, url_prefix='/users')
 
-@user_bp.route('/', methods=['POST'])
+@user_routes.route('/', methods=['POST'])
 def create_user():
     data = request.get_json()
     if not data:
@@ -18,7 +18,7 @@ def create_user():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/<uuid:user_id>', methods=['GET'])
+@user_routes.route('/<uuid:user_id>', methods=['GET'])
 def get_user(user_id: UUID):
     try:
         include_details = request.args.get('include_details', 'false').lower() == 'true'
@@ -29,7 +29,7 @@ def get_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/', methods=['GET'])
+@user_routes.route('/', methods=['GET'])
 def get_all_users():
     try:
         users = ctrl.get_all_users()
@@ -37,7 +37,7 @@ def get_all_users():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/<uuid:user_id>', methods=['PUT'])
+@user_routes.route('/<uuid:user_id>', methods=['PUT'])
 def update_user(user_id: UUID):
     data = request.get_json()
     if not data:
@@ -50,7 +50,7 @@ def update_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/<uuid:user_id>', methods=['DELETE'])
+@user_routes.route('/<uuid:user_id>', methods=['DELETE'])
 def delete_user(user_id: UUID):
     try:
         result = ctrl.delete_user(user_id)
@@ -60,7 +60,7 @@ def delete_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/<uuid:user_id>/websites', methods=['POST'])
+@user_routes.route('/<uuid:user_id>/websites', methods=['POST'])
 def create_website_for_user(user_id: UUID):
     data = request.get_json()
     if not data:
@@ -73,7 +73,7 @@ def create_website_for_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@user_bp.route('/<uuid:user_id>/websites', methods=['GET'])
+@user_routes.route('/<uuid:user_id>/websites', methods=['GET'])
 def get_websites_for_user(user_id: UUID):
     try:
         websites = website_ctrl.get_websites_for_user(user_id)

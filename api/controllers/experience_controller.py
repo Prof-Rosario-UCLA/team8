@@ -8,66 +8,50 @@ from .skill_controller import serialize_skill
 from .utils import get_or_404, get_resolved_field
 import datetime
 
-def serialize_experience_detail(
-    experience_instance: Experience,
+def serialize_experience(
+    experience_instance: Experience, 
     field_overrides_dict: Optional[dict] = None,
-    bullets_list: Optional[List] = None,
-    skills_list: Optional[List] = None
+    include_bullets_if_no_override: bool = False,
+    include_skills_if_no_override: bool = False
     ):
     """
-    Serializes an Experience instance for detailed view within a resume context.
-    Applies field overrides and uses pre-resolved bullets and skills.
+    Serializes an Experience instance.
+    If field_overrides_dict is provided, applies overrides and returns only resolved data fields.
+    Otherwise, serializes global data and can include bullets/skills based on flags.
     """
     if not experience_instance:
         return None
 
     overrides = field_overrides_dict or {}
+    is_resume_context = bool(field_overrides_dict)
 
     data = {
         'id': str(experience_instance.id),
         'user_id': str(experience_instance.user_id),
-        'role': get_resolved_field(experience_instance, overrides, 'role'),
-        'company': get_resolved_field(experience_instance, overrides, 'company'),
-        'location': get_resolved_field(experience_instance, overrides, 'location'),
-        'desc_long': get_resolved_field(experience_instance, overrides, 'desc_long')
+        'role': get_resolved_field(experience_instance, overrides, 'role', experience_instance.role),
+        'company': get_resolved_field(experience_instance, overrides, 'company', experience_instance.company),
+        'location': get_resolved_field(experience_instance, overrides, 'location', experience_instance.location),
+        'desc_long': get_resolved_field(experience_instance, overrides, 'desc_long', experience_instance.desc_long)
     }
 
-    # Handle dates
-    raw_start_date = get_resolved_field(experience_instance, overrides, 'start')
+    raw_start_date = get_resolved_field(experience_instance, overrides, 'start', experience_instance.start)
     if isinstance(raw_start_date, (datetime.date, datetime.datetime)):
         data['start'] = raw_start_date.isoformat()
     else:
         data['start'] = raw_start_date
 
-    raw_end_date = get_resolved_field(experience_instance, overrides, 'end')
+    raw_end_date = get_resolved_field(experience_instance, overrides, 'end', experience_instance.end)
     if isinstance(raw_end_date, (datetime.date, datetime.datetime)):
         data['end'] = raw_end_date.isoformat()
     else:
         data['end'] = raw_end_date
     
-    return {
-        "data": data,
-        "bullets": bullets_list if bullets_list is not None else [],
-        "skills": skills_list if skills_list is not None else []
-    }
-
-# General serializer for Experience
-def serialize_experience(experience: Experience, include_bullets=False, include_skills=False):
-    data = {
-        'id': str(experience.id),
-        'user_id': str(experience.user_id),
-        'role': experience.role,
-        'company': experience.company,
-        'location': experience.location,
-        'start_date': experience.start.isoformat() if experience.start is not None else None,
-        'end_date': experience.end.isoformat() if experience.end is not None else None,
-        'description': experience.desc_long,
-    }
-    if include_bullets:
-        data['bullets'] = [{'order_index': b.order_index, 'content': b.content, 'id': str(b.id)} for b in experience.bullets]
-    if include_skills:
-        # Assuming a simple skill serialization for this context
-        data['skills'] = [{'id': str(s.id), 'name': s.name} for s in experience.skills]
+    if not is_resume_context:
+        if include_bullets_if_no_override:
+            data['bullets'] = [b.content for b in experience_instance.bullets]
+        if include_skills_if_no_override:
+            data['skills'] = [{'id': str(s.id), 'name': s.name, 'category': s.category.value if s.category else None} for s in experience_instance.skills]
+            
     return data
 
 # --- CRUD Functions for Experience ---
@@ -107,7 +91,7 @@ def create_experience(user_id, data):
                     experience.skills.append(skill)
         
         db.session.commit()
-        return serialize_experience(experience, include_bullets=True, include_skills=True)
+        return serialize_experience(experience, include_bullets_if_no_override=True, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error creating experience: {str(e)}")
@@ -117,26 +101,36 @@ def create_experience(user_id, data):
 
 
 def get_experience(experience_id, include_bullets=False, include_skills=False):
-    """Gets a specific experience entry by ID."""
-    query = Experience.query
+    """Retrieves a specific experience entry."""
+    options = []
     if include_bullets:
-        query = query.options(joinedload(Experience.bullets))
+        options.append(joinedload(Experience.bullets))
     if include_skills:
-        query = query.options(joinedload(Experience.skills))
-    experience = query.get_or_404(experience_id)
-    return serialize_experience(experience, include_bullets=include_bullets, include_skills=include_skills)
+        options.append(joinedload(Experience.skills))
+    
+    experience = Experience.query.options(*options).get_or_404(experience_id)
+    return serialize_experience(
+        experience, 
+        include_bullets_if_no_override=include_bullets, 
+        include_skills_if_no_override=include_skills
+    )
 
 
 def get_all_experiences_for_user(user_id, include_bullets=False, include_skills=False):
-    """Gets all experience entries for a specific user."""
+    """Retrieves all experience entries for a given user."""
     user = User.query.get_or_404(user_id)
-    query = Experience.query.filter_by(user_id=user.id)
+    options = []
     if include_bullets:
-        query = query.options(joinedload(Experience.bullets))
+        options.append(joinedload(Experience.bullets))
     if include_skills:
-        query = query.options(joinedload(Experience.skills))
-    experiences = query.order_by(Experience.start.desc().nullslast(), Experience.end.desc().nullslast()).all()
-    return [serialize_experience(e, include_bullets=include_bullets, include_skills=include_skills) for e in experiences]
+        options.append(joinedload(Experience.skills))
+        
+    experiences = Experience.query.options(*options).filter_by(user_id=user_id).all()
+    return [serialize_experience(
+                exp, 
+                include_bullets_if_no_override=include_bullets, 
+                include_skills_if_no_override=include_skills
+            ) for exp in experiences]
 
 
 def update_experience(experience_id, data):
@@ -167,7 +161,7 @@ def update_experience(experience_id, data):
         
         db.session.commit()
         updated_experience = Experience.query.options(joinedload(Experience.bullets), joinedload(Experience.skills)).get(experience_id)
-        return serialize_experience(updated_experience, include_bullets=True, include_skills=True)
+        return serialize_experience(updated_experience, include_bullets_if_no_override=True, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error updating experience: {str(e)}")
@@ -192,7 +186,7 @@ def add_skill_to_experience(experience_id, skill_id):
         if skill not in experience.skills:
             experience.skills.append(skill)
             db.session.commit()
-        return serialize_experience(experience, include_skills=True)
+        return serialize_experience(experience, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error adding skill to experience: {str(e)}")
@@ -204,7 +198,7 @@ def remove_skill_from_experience(experience_id, skill_id):
         if skill in experience.skills:
             experience.skills.remove(skill)
             db.session.commit()
-        return serialize_experience(experience, include_skills=True)
+        return serialize_experience(experience, include_skills_if_no_override=True)
     except SQLAlchemyError as e:
         db.session.rollback()
         raise ValueError(f"Error removing skill from experience: {str(e)}") 
