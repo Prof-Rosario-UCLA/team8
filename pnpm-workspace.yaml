@@ -1,0 +1,3 @@
+packages:
+  - 'web' # Next.js app
+  - 'api' # Flask app (not managed by pnpm)

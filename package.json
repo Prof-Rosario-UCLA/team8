@@ -1,0 +1,15 @@
+{
+  "name": "prolio-monorepo",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "start:web": "pnpm --filter web start",
+    "lint:web": "pnpm --filter web lint",
+    "dev:api": "flask run --debug --port=5001",
+    "dev": "pnpm run dev:api & pnpm run dev:web",
+    "dev:windows": "start /B pnpm run dev:api && start /B pnpm run dev:web"
+  },
+  "devDependencies": {
+  }
+} 
