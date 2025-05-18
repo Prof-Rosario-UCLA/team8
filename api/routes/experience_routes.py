@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from api.controllers import experience_controller as ctrl
 from uuid import UUID
 
-experience_bp = Blueprint('experience_bp', __name__, url_prefix='/experiences')
+experience_routes = Blueprint('experience_routes', __name__, url_prefix='/experiences')
 
 # POST /users/<user_id>/experiences
 # GET  /users/<user_id>/experiences
@@ -12,7 +12,7 @@ experience_bp = Blueprint('experience_bp', __name__, url_prefix='/experiences')
 # POST /experiences/<experience_id>/skills/<skill_id>
 # DELETE /experiences/<experience_id>/skills/<skill_id>
 
-@experience_bp.route('/users/<uuid:user_id>/experiences', methods=['POST'])
+@experience_routes.route('/users/<uuid:user_id>/experiences', methods=['POST'])
 def create_experience_for_user(user_id: UUID):
     data = request.get_json()
     if not data:
@@ -25,7 +25,7 @@ def create_experience_for_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/users/<uuid:user_id>/experiences', methods=['GET'])
+@experience_routes.route('/users/<uuid:user_id>/experiences', methods=['GET'])
 def get_all_experiences_for_user(user_id: UUID):
     try:
         include_bullets = request.args.get('include_bullets', 'false').lower() == 'true'
@@ -37,7 +37,7 @@ def get_all_experiences_for_user(user_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/<uuid:experience_id>', methods=['GET'])
+@experience_routes.route('/<uuid:experience_id>', methods=['GET'])
 def get_experience(experience_id: UUID):
     try:
         include_bullets = request.args.get('include_bullets', 'false').lower() == 'true'
@@ -49,7 +49,7 @@ def get_experience(experience_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/<uuid:experience_id>', methods=['PUT'])
+@experience_routes.route('/<uuid:experience_id>', methods=['PUT'])
 def update_experience(experience_id: UUID):
     data = request.get_json()
     if not data:
@@ -62,7 +62,7 @@ def update_experience(experience_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/<uuid:experience_id>', methods=['DELETE'])
+@experience_routes.route('/<uuid:experience_id>', methods=['DELETE'])
 def delete_experience(experience_id: UUID):
     try:
         result = ctrl.delete_experience(experience_id)
@@ -72,7 +72,7 @@ def delete_experience(experience_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/<uuid:experience_id>/skills/<uuid:skill_id>', methods=['POST'])
+@experience_routes.route('/<uuid:experience_id>/skills/<uuid:skill_id>', methods=['POST'])
 def add_skill_to_experience(experience_id: UUID, skill_id: UUID):
     try:
         experience = ctrl.add_skill_to_experience(experience_id, skill_id)
@@ -82,7 +82,7 @@ def add_skill_to_experience(experience_id: UUID, skill_id: UUID):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@experience_bp.route('/<uuid:experience_id>/skills/<uuid:skill_id>', methods=['DELETE'])
+@experience_routes.route('/<uuid:experience_id>/skills/<uuid:skill_id>', methods=['DELETE'])
 def remove_skill_from_experience(experience_id: UUID, skill_id: UUID):
     try:
         experience = ctrl.remove_skill_from_experience(experience_id, skill_id)

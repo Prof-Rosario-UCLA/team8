@@ -10,7 +10,7 @@ Global tables remain single source-of-truth for retrieval & future LLM workflows
 import enum, uuid
 from datetime import date
 from sqlalchemy import (
-    Table, Column, ForeignKey, ForeignKeyConstraint, Index,
+    Table, Column, ForeignKey, ForeignKeyConstraint, Index, PrimaryKeyConstraint,
     Date, DateTime, Integer, Numeric, String, Text, Boolean, create_engine,
     Enum, func, event, literal
 )
