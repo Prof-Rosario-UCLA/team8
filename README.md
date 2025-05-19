@@ -43,11 +43,17 @@ This is a monorepo for a resume content management system.
 
 Next.js for server-side rendering under `web`, api is proxied to `/api`, the Flask backend.
 
-
 ## Setup Flask API
 ```
 conda create -n prolio python=3.10
 cd api
 pip install -r requirements.txt
+```
+
+Create `.flaskenv` under `api/`
+```
+FLASK_APP=app
+FLASK_DEBUG=1  
+DATABASE_URL=<DB_URL_HERE>
 ```
 
