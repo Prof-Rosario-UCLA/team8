@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists in the 'api' directory
-load_dotenv()
+load_dotenv(".flaskenv")
 
 app = Flask(__name__)
 

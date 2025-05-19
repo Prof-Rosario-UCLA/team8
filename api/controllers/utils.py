@@ -1,4 +1,4 @@
-from sqlalchemy.exc import SQLAlchemyError # Or from ..models import db if needed for specific db interactions
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Any, Optional, Dict
 import datetime
 

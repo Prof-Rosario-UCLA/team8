@@ -608,6 +608,7 @@ def update_resume_sections_order(resume_id: UUID, sections_order_data: list):
                 updated_sections_count += 1
         
         if updated_sections_count == 0 and len(sections_order_data) > 0:
+            # TODO
             # This might mean none of the provided section IDs matched existing sections.
             # Depending on desired behavior, this could be an error or just a no-op.
             pass # Or raise ValueError("No matching sections found to reorder.")
@@ -616,7 +617,7 @@ def update_resume_sections_order(resume_id: UUID, sections_order_data: list):
         # Reload or re-fetch resume to get sections in updated order for serialization
         db.session.refresh(resume) 
         # order should be handled by the Model relationship with order_by
-        return serialize_resume(resume, include_details=True) #
+        return serialize_resume(resume, include_details=True) 
         
     except SQLAlchemyError as e:
         db.session.rollback()

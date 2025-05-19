@@ -263,7 +263,7 @@ class ResumeItem(Base):
     order_index = Column(Integer, nullable=False) # Order within its section
 
     # field_overrides will store a JSON object with keys like "title", "role", "description", "start_date", "end_date", etc.
-    field_overrides = Column(JSONB, nullable=True) # Replaces custom_desc and allows for more field overrides
+    field_overrides = Column(JSONB, nullable=True) 
 
     # Relationship to overridden bullets 
     bullets = relationship("ResumeBullet", cascade="all, delete-orphan", order_by="ResumeBullet.order_index")

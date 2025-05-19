@@ -67,7 +67,6 @@ def create_project(user_id: UUID, data: dict):
             start=data.get('start_date'),
             end=data.get('end_date'),
             desc_long=data.get('desc_long'),
-            # description_field=data.get('description') # If added
         )
         db.session.add(project)
         db.session.flush() # To get project.id for bullets
