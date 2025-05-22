@@ -50,19 +50,19 @@ node_modules/
 /web/build/ # if you have a build script outputting here
 
 # Python
-/api/__pycache__/
-/api/*.pyc
-/api/*.pyo
-/api/*.pyd
-/api/.Python
-/api/env/
-/api/venv/
-/api/pip-wheel-metadata/
-/api/.installed.cfg
-/api/*.egg-info/
-/api/*.egg
-/api/*.sqlite3
-/api/*.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-wheel-metadata/
+.installed.cfg
+*.egg-info/
+*.egg
+*.sqlite3
+*.db
 
 # Env files
 .env
