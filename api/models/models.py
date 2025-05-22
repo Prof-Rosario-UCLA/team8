@@ -19,13 +19,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import DDL
 
+from flask_login import UserMixin
+
 Base = declarative_base()
 
 # ------------------------------------------------------------------ #
 #  User & ancillary
 # ------------------------------------------------------------------ #
 
-class User(Base):
+class User(UserMixin, Base):
     __tablename__ = "users"
     id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name       = Column(String, nullable=False)
