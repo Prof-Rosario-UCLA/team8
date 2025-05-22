@@ -34,27 +34,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import DDL
 
-from flask_login import UserMixin
-
 Base = declarative_base()
-
-# ------------------------------------------------------------------ #
-#  User & ancillary
-# ------------------------------------------------------------------ #
-
-
-class User(UserMixin, Base):
-    __tablename__ = "users"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    websites = relationship("Website", cascade="all, delete-orphan")
-    educations = relationship("Education", cascade="all, delete-orphan")
-    experiences = relationship("Experience", cascade="all, delete-orphan")
-    projects = relationship("Project", cascade="all, delete-orphan")
-    resumes = relationship("Resume", cascade="all, delete-orphan")
 
 
 class Website(Base):

@@ -1,10 +1,13 @@
-from flask import Blueprint, request, redirect, url_for
+from flask import Blueprint, request, redirect, url_for, g
 from flask_login import current_user, login_user, login_required, logout_user
 
 import os
 import json
 
 from oauthlib.oauth2 import WebApplicationClient
+
+from models.user import User
+from db import db
 
 import requests
 
@@ -28,7 +31,7 @@ def index():
             "<div><p>Google Profile Picture:</p>"
             '<img src="{}" alt="Google profile pic"></img></div>'
             '<a class="button" href="/auth/logout">Logout</a>'.format(
-                current_user.name, current_user.email, current_user.profile_pic
+                current_user.name, current_user.email, current_user.profile_picture
             )
         )
     else:
@@ -100,21 +103,24 @@ def callback():
     else:
         return "User email not available or not verified by Google.", 400
 
-    from ..models import User
-
     # Create a user in your db with the information provided
     # by Google
-    user = User(id_=unique_id, name=users_name, email=users_email, profile_pic=picture)
+    user = User(
+        google_id=unique_id, name=users_name, email=users_email, profile_picture=picture
+    )
 
     # Doesn't exist? Add it to the database.
-    if not User.get(unique_id):
-        User.create(unique_id, users_name, users_email, picture)
+    if not db.session.execute(
+        db.select(User).filter_by(google_id=unique_id)
+    ).fetchone():
+        db.session.add(user)
+        db.session.commit()
 
     # Begin user session by logging the user in
     login_user(user)
 
     # Send user back to homepage
-    return redirect(url_for("index"))
+    return redirect(url_for("auth_routes.index"))
 
 
 @auth_routes.route("/logout")

@@ -2,7 +2,6 @@ from flask_sqlalchemy import SQLAlchemy
 
 from .models import (
     Base,
-    User,
     Website,
     ParentType,
     BulletPoint,

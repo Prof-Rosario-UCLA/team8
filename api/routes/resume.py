@@ -213,9 +213,7 @@ def update_resume_item_route(resume_id: UUID, item_type_str: str, item_id: UUID)
 def remove_item_from_resume_route(resume_id: UUID, item_type_str: str, item_id: UUID):
     """Remove an item from a resume."""
     try:
-        result = resume.remove_item_from_resume(
-            resume_id, item_type_str, item_id
-        )
+        result = resume.remove_item_from_resume(resume_id, item_type_str, item_id)
         return jsonify(result), 200
     except ValueError as e:  # Handles 404 or validation errors
         return jsonify({"error": str(e)}), 400 if "not found" not in str(
