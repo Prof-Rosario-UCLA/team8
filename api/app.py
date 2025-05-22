@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-import os
+import os, uuid
 from dotenv import load_dotenv
 
 from db import db, init_db
@@ -30,11 +30,15 @@ login_manager.init_app(app)
 
 
 @login_manager.user_loader
-def load_user(user_id):
+def load_user(user_id: str):
     from models.user import User
-    import uuid
 
-    uid = uuid.UUID(user_id)
+    print(user_id)
+    try:
+        uid = uuid.UUID(user_id)
+    except:
+        return None
+
     return db.session.execute(db.select(User).filter_by(id=uid)).fetchone()[0]
 
 

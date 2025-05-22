@@ -25,6 +25,7 @@ auth_routes = Blueprint("auth_routes", __name__, url_prefix="/auth")
 # Testing shim
 @auth_routes.route("/shim")
 def index():
+    print(current_user)
     if current_user.is_authenticated:
         return (
             "<p>Hello, {}! You're logged in! Email: {}</p>"
@@ -105,16 +106,20 @@ def callback():
 
     # Create a user in your db with the information provided
     # by Google
-    user = User(
-        google_id=unique_id, name=users_name, email=users_email, profile_picture=picture
-    )
+    user = db.session.execute(db.select(User).filter_by(google_id=unique_id)).fetchone()
 
     # Doesn't exist? Add it to the database.
-    if not db.session.execute(
-        db.select(User).filter_by(google_id=unique_id)
-    ).fetchone():
+    if not user:
+        user = User(
+            google_id=unique_id,
+            name=users_name,
+            email=users_email,
+            profile_picture=picture,
+        )
         db.session.add(user)
         db.session.commit()
+    else:
+        user = user[0]
 
     # Begin user session by logging the user in
     login_user(user)
