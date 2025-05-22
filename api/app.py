@@ -33,7 +33,6 @@ login_manager.init_app(app)
 def load_user(user_id: str):
     from models.user import User
 
-    print(user_id)
     try:
         uid = uuid.UUID(user_id)
     except:
