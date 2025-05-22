@@ -3,7 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from typing import Optional, List
 from uuid import UUID
-from .bullet_point_controller import serialize_bullet_point
+from .bullet_point import serialize_bullet_point
 from .utils import get_or_404, get_resolved_field
 import datetime
 

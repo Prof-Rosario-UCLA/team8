@@ -21,10 +21,10 @@ from uuid import UUID
 from .utils import get_or_404, get_resolved_field
 
 # Import serializer functions
-from .education_controller import serialize_education
-from .experience_controller import serialize_experience
-from .project_controller import serialize_project
-from .skill_controller import serialize_skill as serialize_global_skill
+from .education import serialize_education
+from .experience import serialize_experience
+from .project import serialize_project
+from .skill import serialize_skill as serialize_global_skill
 
 import datetime
 import enum

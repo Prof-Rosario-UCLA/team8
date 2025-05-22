@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from uuid import UUID
 from sqlalchemy.exc import SQLAlchemyError
 
-from ..controllers import resume_controller
+from ..controllers import resume
 
 resume_routes = Blueprint("resume_routes", __name__, url_prefix="/resumes")
 
@@ -14,7 +14,7 @@ def get_all_resumes_route():
     """Get all resumes, optionally filtered by user_id."""
     user_id = request.args.get("user_id")
     try:
-        resumes = resume_controller.get_all_resumes(user_id=user_id)
+        resumes = resume.get_all_resumes(user_id=user_id)
         return jsonify(resumes), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -32,7 +32,7 @@ def create_resume_route():
     if "user_id" not in data:  # Basic validation
         return jsonify({"error": "Missing 'user_id' in request body"}), 400
     try:
-        resume = resume_controller.create_resume(data)
+        resume = resume.create_resume(data)
         return jsonify(resume), 201
     except (ValueError, SQLAlchemyError) as e:
         return jsonify(
@@ -46,7 +46,7 @@ def create_resume_route():
 def get_resume_route(resume_id: UUID):
     """Get a specific resume with all its details."""
     try:
-        resume = resume_controller.get_resume(resume_id)
+        resume = resume.get_resume(resume_id)
         return jsonify(resume), 200
     except ValueError as e:  # Handles 404 from get_or_404
         return jsonify({"error": str(e)}), 404
@@ -61,7 +61,7 @@ def update_resume_route(resume_id: UUID):
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
     try:
-        resume = resume_controller.update_resume(resume_id, data)
+        resume = resume.update_resume(resume_id, data)
         return jsonify(resume), 200
     except ValueError as e:  # Handles 404 or validation errors
         return jsonify({"error": str(e)}), 400 if "not found" not in str(
@@ -77,7 +77,7 @@ def update_resume_route(resume_id: UUID):
 def delete_resume_route(resume_id: UUID):
     """Delete a resume."""
     try:
-        result = resume_controller.delete_resume(resume_id)
+        result = resume.delete_resume(resume_id)
         return jsonify(result), 200  # Or 204 No Content
     except ValueError as e:  # Handles 404
         return jsonify({"error": str(e)}), 404
@@ -97,7 +97,7 @@ def add_section_to_resume_route(resume_id: UUID):
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
     try:
-        section = resume_controller.create_resume_section(resume_id, data)
+        section = resume.create_resume_section(resume_id, data)
         return jsonify(section), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -113,7 +113,7 @@ def add_section_to_resume_route(resume_id: UUID):
 def remove_section_from_resume_route(resume_id: UUID, section_type_str: str):
     """Remove a section from a resume by its type string."""
     try:
-        result = resume_controller.delete_resume_section(resume_id, section_type_str)
+        result = resume.delete_resume_section(resume_id, section_type_str)
         return jsonify(result), 200
     except ValueError as e:  # Handles 404 or invalid type
         return jsonify({"error": str(e)}), 400 if "not found" not in str(
@@ -134,7 +134,7 @@ def update_resume_sections_order_route(resume_id: UUID):
             {"error": "Request body must be a list of section order data"}
         ), 400
     try:
-        updated_resume = resume_controller.update_resume_sections_order(resume_id, data)
+        updated_resume = resume.update_resume_sections_order(resume_id, data)
         return jsonify(updated_resume), 200
     except ValueError as e:  # Handles 404 or validation errors
         return jsonify({"error": str(e)}), 400 if "not found" not in str(
@@ -164,7 +164,7 @@ def add_item_to_resume_route(resume_id: UUID):
             }
         ), 400
     try:
-        resume_item_detail = resume_controller.add_item_to_resume(resume_id, data)
+        resume_item_detail = resume.add_item_to_resume(resume_id, data)
         return jsonify(resume_item_detail), 201
     except ValueError as e:  # Handles 404 or validation errors
         return jsonify({"error": str(e)}), 400 if "not found" not in str(
@@ -193,7 +193,7 @@ def update_resume_item_route(resume_id: UUID, item_type_str: str, item_id: UUID)
         ), 400
 
     try:
-        updated_item_detail = resume_controller.update_resume_item(
+        updated_item_detail = resume.update_resume_item(
             resume_id, item_type_str, item_id, data
         )
         return jsonify(updated_item_detail), 200
@@ -213,7 +213,7 @@ def update_resume_item_route(resume_id: UUID, item_type_str: str, item_id: UUID)
 def remove_item_from_resume_route(resume_id: UUID, item_type_str: str, item_id: UUID):
     """Remove an item from a resume."""
     try:
-        result = resume_controller.remove_item_from_resume(
+        result = resume.remove_item_from_resume(
             resume_id, item_type_str, item_id
         )
         return jsonify(result), 200
@@ -238,7 +238,7 @@ def reorder_resume_items_route(resume_id: UUID):
             {"error": "Request body must contain 'items_type' with a string value."}
         ), 400
     try:
-        updated_resume = resume_controller.reorder_resume_items(resume_id, data)
+        updated_resume = resume.reorder_resume_items(resume_id, data)
         return jsonify(updated_resume), 200
     except ValueError as e:  # Handles 404 or validation errors
         return jsonify({"error": str(e)}), 400 if "not found" not in str(

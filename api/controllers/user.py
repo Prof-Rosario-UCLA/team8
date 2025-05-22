@@ -1,7 +1,7 @@
 from ..models import db, User, Website, Education, Experience, Project, Resume
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload  # For eager loading related objects
-from .website_controller import (
+from .website import (
     serialize_website,
     create_website as wc_create,
     update_website as wc_update,
