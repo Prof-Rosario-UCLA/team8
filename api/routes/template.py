@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from api.controllers import template_controller as ctrl
+from ..controllers import template_controller as ctrl
 from uuid import UUID
 
 template_routes = Blueprint("template_routes", __name__, url_prefix="/templates")
