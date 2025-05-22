@@ -1,24 +1,22 @@
 from ..models import db, User, Website
 from sqlalchemy.exc import SQLAlchemyError
 
+
 def serialize_website(website: Website):
     """Converts a Website object to a dictionary."""
     return {
-        'id': str(website.id),
-        'user_id': str(website.user_id),
-        'alt': website.alt,
-        'url': website.url
+        "id": str(website.id),
+        "user_id": str(website.user_id),
+        "alt": website.alt,
+        "url": website.url,
     }
+
 
 def create_website(user_id, data):
     """Creates a new website for a user."""
-    user = User.query.get_or_404(user_id) # Ensure user exists
+    user = User.query.get_or_404(user_id)  # Ensure user exists
     try:
-        website = Website(
-            user_id=user.id,
-            alt=data.get('alt'),
-            url=data['url']
-        )
+        website = Website(user_id=user.id, alt=data.get("alt"), url=data["url"])
         db.session.add(website)
         db.session.commit()
         return serialize_website(website)
@@ -47,11 +45,11 @@ def update_website(website_id, data):
     """Updates an existing website."""
     website = Website.query.get_or_404(website_id)
     try:
-        if 'alt' in data:
-            website.alt = data['alt']
-        if 'url' in data:
-            website.url = data['url']
-        
+        if "alt" in data:
+            website.alt = data["alt"]
+        if "url" in data:
+            website.url = data["url"]
+
         db.session.commit()
         return serialize_website(website)
     except SQLAlchemyError as e:
@@ -68,4 +66,4 @@ def delete_website(website_id):
         return {"message": "Website deleted successfully"}
     except SQLAlchemyError as e:
         db.session.rollback()
-        raise ValueError(f"Error deleting website: {str(e)}") 
+        raise ValueError(f"Error deleting website: {str(e)}")

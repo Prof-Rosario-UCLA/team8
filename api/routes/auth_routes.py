@@ -14,9 +14,10 @@ GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configura
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-auth_routes = Blueprint('auth_routes', __name__, url_prefix='/auth')
+auth_routes = Blueprint("auth_routes", __name__, url_prefix="/auth")
 
 # Following code referenced from https://realpython.com/flask-google-login/
+
 
 # Testing shim
 @auth_routes.route("/shim")
@@ -33,8 +34,10 @@ def index():
     else:
         return '<a class="button" href="/auth/login">Google Login</a>'
 
+
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
+
 
 @auth_routes.route("/login")
 def login():
@@ -51,6 +54,7 @@ def login():
     )
     return redirect(request_uri)
 
+
 @auth_routes.route("/login/callback")
 def callback():
     # Get authorization code Google sent back to you
@@ -66,7 +70,7 @@ def callback():
         token_endpoint,
         authorization_response=request.url,
         redirect_url=request.base_url,
-        code=code
+        code=code,
     )
     token_response = requests.post(
         token_url,
@@ -97,11 +101,10 @@ def callback():
         return "User email not available or not verified by Google.", 400
 
     from ..models import User
+
     # Create a user in your db with the information provided
     # by Google
-    user = User(
-        id_=unique_id, name=users_name, email=users_email, profile_pic=picture
-    )
+    user = User(id_=unique_id, name=users_name, email=users_email, profile_pic=picture)
 
     # Doesn't exist? Add it to the database.
     if not User.get(unique_id):
