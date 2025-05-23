@@ -43,8 +43,8 @@ def ping():
     return jsonify(message="Pong!")
 
 
-from routes.auth import auth_routes
-from routes.resume import resume_routes
+from views.auth import auth_routes
+from views.resume import resume_routes
 
 app.register_blueprint(auth_routes)
 app.register_blueprint(resume_routes)
