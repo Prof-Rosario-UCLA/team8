@@ -1,8 +1,10 @@
-from flask import Blueprint, request, redirect, url_for, g
+from flask import Blueprint, request, redirect, url_for
 from flask_login import current_user, login_user, login_required, logout_user
 
 import os
 import json
+import base64
+from urllib.parse import urlparse
 
 from oauthlib.oauth2 import WebApplicationClient
 
@@ -19,13 +21,46 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 auth_routes = Blueprint("auth_routes", __name__, url_prefix="/auth")
 
-# Following code referenced from https://realpython.com/flask-google-login/
+def get_google_provider_cfg():
+    return requests.get(GOOGLE_DISCOVERY_URL).json()
 
+# Google's OAuth2 protocol only supports passing a state parameter on
+# the redirect to the callback containing a base64 encoded JSON.
+# https://developers.google.com/identity/protocols/oauth2/web-server
+def serialize_google_state(state: dict[str, str]) -> str | None:
+    try:
+        data = json.dumps(state).encode('utf-8')
+        return base64.urlsafe_b64encode(data).decode('utf-8')
+    except:
+        return None
+
+def deserialize_google_state(state: str) -> dict[str, str] | None:
+    try:
+        data = base64.urlsafe_b64decode(state).decode('utf-8')
+        return json.loads(data)
+    except:
+        return None
+
+def is_safe_url(url: str) -> bool:
+    """
+    URL validation to prevent open redirects.
+    """
+    u = urlparse(url)
+    # Only allow relative URLs
+    if u.scheme or u.netloc:
+        return False
+    return url.startswith("/")
+
+# Following code referenced from https://realpython.com/flask-google-login/
 
 # Testing shim
 @auth_routes.route("/shim")
 def index():
-    print(current_user)
+    next_url = request.args.get("next")
+    if next_url and is_safe_url(next_url):
+        next_params = "?next=" + next_url
+    else:
+        next_params = ""
     if current_user.is_authenticated:
         return (
             "<p>Hello, {}! You're logged in! Email: {}</p>"
@@ -36,12 +71,9 @@ def index():
             )
         )
     else:
-        return '<a class="button" href="/auth/login">Google Login</a>'
-
-
-def get_google_provider_cfg():
-    return requests.get(GOOGLE_DISCOVERY_URL).json()
-
+        # Hotfix(bliutech): Temporary primitive XSS sanitization
+        next_params = next_params.replace('"', "")
+        return f'<a class="button" href="/auth/login{next_params}">Google Login</a>'
 
 @auth_routes.route("/login")
 def login():
@@ -49,12 +81,18 @@ def login():
     google_provider_cfg = get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
+    # Save optional redirect after authentication
+    state = serialize_google_state({
+        "next": request.args.get("next")
+    }) or ""
+
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
         scope=["openid", "email", "profile"],
+        state=state
     )
     return redirect(request_uri)
 
@@ -123,6 +161,19 @@ def callback():
 
     # Begin user session by logging the user in
     login_user(user)
+
+    # Redirect user to path set at ?next=<path>
+    state = request.args.get("state")
+    next_url = None
+    if state:
+        state = deserialize_google_state(state)
+    if state:
+        next_url = state.get("next")
+
+    # TODO: check if we need a 307 redirect instead
+    # https://stackoverflow.com/questions/32133910/how-redirect-with-args-for-view-function-without-query-string-on-flask
+    if next_url and is_safe_url(next_url):
+        return redirect(next_url)
 
     # Send user back to homepage
     return redirect(url_for("auth_routes.index"))

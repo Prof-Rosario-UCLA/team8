@@ -1,22 +1,15 @@
-import uuid
-
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-)
+from sqlalchemy.orm import Mapped, mapped_column
 
 from flask_login import UserMixin
 
-Base = declarative_base()
+from db import db
 
-
-class User(UserMixin, Base):
+class User(UserMixin, db.Model):
     __tablename__ = "users"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    google_id = Column(Integer, nullable=False)
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    profile_picture = Column(String, nullable=False)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # https://stackoverflow.com/questions/6872310/whats-the-best-column-type-for-google-user-id
+    google_id: Mapped[str] = mapped_column(unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[str] = mapped_column(nullable=False, unique=True)
+    profile_picture: Mapped[str] = mapped_column(nullable=False)

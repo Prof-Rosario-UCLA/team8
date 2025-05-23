@@ -19,26 +19,22 @@ CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
 # Database Configuration
 # Using PostgreSQL
-# app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-#     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
-# )
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
+)
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+login_manager.login_view = 'auth_routes.index'
 
 
 @login_manager.user_loader
-def load_user(user_id: str):
+def load_user(user_id: int):
     from models.user import User
 
-    try:
-        uid = uuid.UUID(user_id)
-    except:
-        return None
-
-    return db.session.execute(db.select(User).filter_by(id=uid)).fetchone()[0]
+    return db.session.execute(db.select(User).filter_by(id=user_id)).fetchone()[0]
 
 
 # API Routes
@@ -48,8 +44,10 @@ def ping():
 
 
 from routes.auth import auth_routes
+from routes.resume import resume_routes
 
 app.register_blueprint(auth_routes)
+app.register_blueprint(resume_routes)
 
 # Main execution
 if __name__ == "__main__":
