@@ -1,6 +1,4 @@
 from flask import Blueprint, request, jsonify
-from uuid import UUID
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select
 
 from models.user import User
@@ -27,140 +25,67 @@ def get_all_resumes():
     return jsonify({"resumes": result})
 
 
+@resume_routes.get("/<id:int>")
+@login_required
+def get_resume(id: int):
+    """
+    Return a resume belonging to the current user
+    with a given resume id.
+    """
+    stmt = select(Resume).where(Resume.user_id == current_user.id and Resume.id == id)
+    result = db.session.execute(stmt)
+    result = result.scalar()
+    if result:
+        return result.json()
+    return {"error": "Resume not found"}, 404
+
+
 @resume_routes.post("/create")
 @login_required
 def create_resume():
     data = request.get_json()
-    if not data.get("title"):
+    if not data.get("name"):
         return jsonify({"error": "Missing title"}), 400
 
-    res = Resume(user_id=current_user.id, title=data["title"], education=[])
-    db.session.add(res)
-    db.session.commit()
+    res = Resume(user_id=current_user.id, name=data["name"], education=[])
+    res.save_to_db()
     return jsonify({"message": "Resume created successfully"})
 
 
-# @resume_routes.route("", methods=["POST"])
-# def create_resume_route():
-#     """Create a new resume."""
-#     data = request.get_json()
-#     if not data:
-#         return jsonify({"error": "Request body must be JSON"}), 400
-#     if "user_id" not in data:  # Basic validation
-#         return jsonify({"error": "Missing 'user_id' in request body"}), 400
-#     try:
-#         resume = resume.create_resume(data)
-#         return jsonify(resume), 201
-#     except (ValueError, SQLAlchemyError) as e:
-#         return jsonify(
-#             {"error": str(e)}
-#         ), 400  # SQLAlchemyError might be 500 depending on policy
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
+@resume_routes.put("/update/<id:int>")
+@login_required
+def update_resume(id: int):
+    data = request.get_json()
+    if not data or type(data) != dict:
+        return jsonify({"error": "Missing required data"})
+
+    stmt = select(Resume).where(Resume.user_id == current_user.id and Resume.id == id)
+    result = db.session.execute(stmt)
+    result = result.scalar()
+
+    if not result:
+        return {"error": "Resume not found"}, 404
+
+    result.name = data.get("name")
+
+    result.save_to_db()
+
+    return jsonify({"message": "Updated resume"})
 
 
-# @resume_routes.route("/<uuid:resume_id>", methods=["GET"])
-# def get_resume_route(resume_id: UUID):
-#     """Get a specific resume with all its details."""
-#     try:
-#         resume = resume.get_resume(resume_id)
-#         return jsonify(resume), 200
-#     except ValueError as e:  # Handles 404 from get_or_404
-#         return jsonify({"error": str(e)}), 404
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
+@resume_routes.delete("/delete/<id:int>")
+@login_required
+def delete_resume(id: int):
+    stmt = select(Resume).where(Resume.user_id == current_user.id and Resume.id == id)
+    result = db.session.execute(stmt)
+    result = result.scalar()
 
+    if not result:
+        return {"error": "Resume not found"}, 404
 
-# @resume_routes.route("/<uuid:resume_id>", methods=["PUT"])
-# def update_resume_route(resume_id: UUID):
-#     """Update resume metadata (e.g., title, template_id)."""
-#     data = request.get_json()
-#     if not data:
-#         return jsonify({"error": "Request body must be JSON"}), 400
-#     try:
-#         resume = resume.update_resume(resume_id, data)
-#         return jsonify(resume), 200
-#     except ValueError as e:  # Handles 404 or validation errors
-#         return jsonify({"error": str(e)}), 400 if "not found" not in str(
-#             e
-#         ).lower() else 404
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
+    result.delete_from_db()
 
-
-# @resume_routes.route("/<uuid:resume_id>", methods=["DELETE"])
-# def delete_resume_route(resume_id: UUID):
-#     """Delete a resume."""
-#     try:
-#         result = resume.delete_resume(resume_id)
-#         return jsonify(result), 200  # Or 204 No Content
-#     except ValueError as e:  # Handles 404
-#         return jsonify({"error": str(e)}), 404
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-# #  Resume Section CRUD & Ordering
-
-
-# @resume_routes.route("/<uuid:resume_id>/sections", methods=["POST"])
-# def add_section_to_resume_route(resume_id: UUID):
-#     """Add a new section to a resume."""
-#     data = request.get_json()
-#     if not data:
-#         return jsonify({"error": "Request body must be JSON"}), 400
-#     try:
-#         section = resume.create_resume_section(resume_id, data)
-#         return jsonify(section), 201
-#     except ValueError as e:
-#         return jsonify({"error": str(e)}), 400
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-# @resume_routes.route(
-#     "/<uuid:resume_id>/sections/<string:section_type_str>", methods=["DELETE"]
-# )
-# def remove_section_from_resume_route(resume_id: UUID, section_type_str: str):
-#     """Remove a section from a resume by its type string."""
-#     try:
-#         result = resume.delete_resume_section(resume_id, section_type_str)
-#         return jsonify(result), 200
-#     except ValueError as e:  # Handles 404 or invalid type
-#         return jsonify({"error": str(e)}), 400 if "not found" not in str(
-#             e
-#         ).lower() else 404
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-# @resume_routes.route("/<uuid:resume_id>/sections/order", methods=["PUT"])
-# def update_resume_sections_order_route(resume_id: UUID):
-#     """Update the order of sections within a resume."""
-#     data = request.get_json()
-#     if not isinstance(data, list):
-#         return jsonify(
-#             {"error": "Request body must be a list of section order data"}
-#         ), 400
-#     try:
-#         updated_resume = resume.update_resume_sections_order(resume_id, data)
-#         return jsonify(updated_resume), 200
-#     except ValueError as e:  # Handles 404 or validation errors
-#         return jsonify({"error": str(e)}), 400 if "not found" not in str(
-#             e
-#         ).lower() else 404
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
+    return jsonify({"message": "Deleted resume"})
 
 
 # #  Resume Item Operations
@@ -232,29 +157,6 @@ def create_resume():
 #     try:
 #         result = resume.remove_item_from_resume(resume_id, item_type_str, item_id)
 #         return jsonify(result), 200
-#     except ValueError as e:  # Handles 404 or validation errors
-#         return jsonify({"error": str(e)}), 400 if "not found" not in str(
-#             e
-#         ).lower() else 404
-#     except SQLAlchemyError as e:
-#         return jsonify({"error": f"Database error: {str(e)}"}), 500
-#     except Exception as e:
-#         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-# @resume_routes.route("/<uuid:resume_id>/items/order", methods=["PUT"])
-# def reorder_resume_items_route(resume_id: UUID):
-#     """Reorder items within a resume."""
-#     data = request.get_json()
-#     if not data or "items" not in data or not isinstance(data["items"], list):
-#         return jsonify({"error": "Request body must be JSON with an 'items' list"}), 400
-#     if "items_type" not in data or not isinstance(data["items_type"], str):
-#         return jsonify(
-#             {"error": "Request body must contain 'items_type' with a string value."}
-#         ), 400
-#     try:
-#         updated_resume = resume.reorder_resume_items(resume_id, data)
-#         return jsonify(updated_resume), 200
 #     except ValueError as e:  # Handles 404 or validation errors
 #         return jsonify({"error": str(e)}), 400 if "not found" not in str(
 #             e
