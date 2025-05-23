@@ -1,0 +1,142 @@
+{
+    "id": 1,
+    "template": 1,
+    "name": "Jake's Resume",
+    "phone": "(123) 456-7890",
+    "email": "jake@example.com",
+    "linkedin": "linkedin.com/in/jake",
+    "github": "github.com/jake",
+    "website": "https://www.example.com",
+    "sections": [
+        {
+            "name": "Education",
+            "items": [
+                {
+                    "id": 1,
+                    "item_type": "Education",
+                    "title": "Masters in Computer Science",
+                    "organization": "University of California, Los Angeles (UCLA)",
+                    "start_date": "September 2024",
+                    "end_date": null,
+                    "location": "Los Angeles, CA",
+                    "description": ""
+                },
+                {
+                    "id": 2,
+                    "item_type": "Education",
+                    "title": "Bachelor of Science in Computer Science",
+                    "organization": "University of California, Los Angeles (UCLA)",
+                    "start_date": "September 2020",
+                    "end_date": "June 2024",
+                    "location": "Los Angeles, CA",
+                    "description": ""
+                }
+            ]
+        },
+        {
+            "name": "Experience",
+            "items": [
+                {
+                    "id": 3,
+                    "item_type": "Experience",
+                    "title": "Software Engineer Intern",
+                    "organization": "Macrosoft",
+                    "start_date": "June 2023",
+                    "end_date": "September 2023",
+                    "location": "New York City, NY",
+                    "description": "Worked on the Macrodata Refinement Team.\nBuild data cleaning pipelines for data wrangling and cleaning used by data engineers within Macrosoft to serve cutting-edge healthcare technology customers.\nIncorperated Large-Language Models (LLMs) agents to help automate the data cleaning process using unsupervised machine learning."
+                },
+                {
+                    "id": 4,
+                    "item_type": "Experience",
+                    "title": "Software Engineer Intern",
+                    "organization": "Poogle",
+                    "start_date": "June 2022",
+                    "end_date": "September 2022",
+                    "location": "Sunnyvale, CA",
+                    "description": "Worked on the Poodle Petting Services Team.\nDeveloped a distributed poodle scheduling service able to store millions of data points on poodle petting for millions of customers at Poogle.\nImplemented distributed consensus in Go using the Paxos algorithm to maintain eventual consistency and availability."
+                },
+                {
+                    "id": 5,
+                    "item_type": "Experience",
+                    "title": "Software Engineer Intern",
+                    "organization": "Bananazon",
+                    "start_date": "June 2021",
+                    "end_date": "September 2021",
+                    "location": "Seattle, WA",
+                    "description": "Worked on the Cloud Bananna Ingestion Team.\nDeveloped a full-stack web application for counting bananas.\nUsed big-data algorithms like MapReduce to scale bananna counting 10x for thousands of Banannazon employees."
+                }
+            ]
+        },
+        {
+            "name": "Projects",
+            "items": [
+                {
+                    "id": 6,
+                    "item_type": "Project",
+                    "title": "Temporal Rollback Automation - Time Variance Authority (TVA)",
+                    "organization": "Club Project",
+                    "start_date": "January 2023",
+                    "end_date": "March 2023",
+                    "location": "Los Angeles, CA",
+                    "description": "Developed CI/CD pipeline for multiverse branch pruning using Loki-as-Code and Nexus Fluctuation Monitoring (NFM); reduced unauthorized timeline deployments by 87%.\nContainerized temporal rollback tools using ChronoDocker; ensured reproducibility across divergent realities and local pocket dimensions.\nImplemented real-time anomaly alerts via Slack-to-Timeline PagerDuty integration—successfully caught two Lokis, one Kang, and an unpaid intern before universe destabilization.\n"
+                },
+                {
+                    "id": 7,
+                    "item_type": "Project",
+                    "title": "The Matrix",
+                    "organization": "Club Project",
+                    "start_date": "January 2022",
+                    "end_date": "March 2022",
+                    "location": "Los Angeles, CA",
+                    "description": "Designed and maintained immersive neural-interactive simulation for 99.9% of humanity; received consistently high user engagement despite complete lack of consent.\nLed team of Agents in real-time anomaly detection and reality-bending bug resolution, including high-priority escalations (e.g. \"The One\")\nIntroduced bullet-time rendering engine and kung fu auto-installation via direct brain upload, reducing training time by 100%."
+                },
+                {
+                    "id": 8,
+                    "item_type": "Project",
+                    "title": "Death Star",
+                    "organization": "Class Project",
+                    "start_date": "January 2021",
+                    "end_date": "March 2021",
+                    "location": "Los Angeles, CA",
+                    "description": "Spearheaded cross-functional collaboration with Sith Lords, bounty hunters, and disgruntled contractors to deliver a planetary-scale laser weapon ahead of Empire fiscal year-end.\nImplemented robust access control systems (e.g., trench run) with intentional single-point-of-failure for testing Rebel threat response protocols\nReduced planet removal time by 99.99%, achieving galactic-scale disruption with minimal QA oversight"
+                }
+            ]
+        },
+        {
+            "name": "Technical Skills",
+            "items": [
+                {
+                    "id": 9,
+                    "item_type": "Skill",
+                    "title": "Languages",
+                    "organization": "",
+                    "start_date": "",
+                    "end_date": null,
+                    "location": "",
+                    "description": "Python, C++, JavaScript."
+                },
+                {
+                    "id": 10,
+                    "item_type": "Skill",
+                    "title": "Frameworks",
+                    "organization": "",
+                    "start_date": "",
+                    "end_date": null,
+                    "location": "",
+                    "description": "Express.js, React.js, Flask."
+                },
+                {
+                    "id": 11,
+                    "item_type": "Skill",
+                    "title": "Tools",
+                    "organization": "",
+                    "start_date": "",
+                    "end_date": null,
+                    "location": "",
+                    "description": "Git, Docker, VSCode."
+                }
+            ]
+        }
+    ]
+}
