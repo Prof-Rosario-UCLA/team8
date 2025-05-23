@@ -12,6 +12,7 @@ from db import db
 
 resume_routes = Blueprint("resume_routes", __name__, url_prefix="/resumes")
 
+
 @resume_routes.get("/all")
 @login_required
 def get_all_resumes():
@@ -23,29 +24,21 @@ def get_all_resumes():
     result = result.scalars().all()
     result = [r.json() for r in result]
 
-    return jsonify({
-        "resumes": result
-    })
+    return jsonify({"resumes": result})
+
 
 @resume_routes.post("/create")
 @login_required
 def create_resume():
     data = request.get_json()
     if not data.get("title"):
-        return jsonify({
-            "error": "Missing title"
-        }), 400
+        return jsonify({"error": "Missing title"}), 400
 
-    res = Resume(
-        user_id=current_user.id,
-        title=data["title"],
-        education=[]
-    )
+    res = Resume(user_id=current_user.id, title=data["title"], education=[])
     db.session.add(res)
     db.session.commit()
-    return jsonify({
-        "message": "Resume created successfully"
-    })
+    return jsonify({"message": "Resume created successfully"})
+
 
 # @resume_routes.route("", methods=["POST"])
 # def create_resume_route():

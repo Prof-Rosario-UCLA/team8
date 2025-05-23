@@ -21,25 +21,29 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
 auth_routes = Blueprint("auth_routes", __name__, url_prefix="/auth")
 
+
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
+
 
 # Google's OAuth2 protocol only supports passing a state parameter on
 # the redirect to the callback containing a base64 encoded JSON.
 # https://developers.google.com/identity/protocols/oauth2/web-server
 def serialize_google_state(state: dict[str, str]) -> str | None:
     try:
-        data = json.dumps(state).encode('utf-8')
-        return base64.urlsafe_b64encode(data).decode('utf-8')
+        data = json.dumps(state).encode("utf-8")
+        return base64.urlsafe_b64encode(data).decode("utf-8")
     except:
         return None
 
+
 def deserialize_google_state(state: str) -> dict[str, str] | None:
     try:
-        data = base64.urlsafe_b64decode(state).decode('utf-8')
+        data = base64.urlsafe_b64decode(state).decode("utf-8")
         return json.loads(data)
     except:
         return None
+
 
 def is_safe_url(url: str) -> bool:
     """
@@ -51,7 +55,9 @@ def is_safe_url(url: str) -> bool:
         return False
     return url.startswith("/")
 
+
 # Following code referenced from https://realpython.com/flask-google-login/
+
 
 # Testing shim
 @auth_routes.route("/shim")
@@ -75,6 +81,7 @@ def index():
         next_params = next_params.replace('"', "")
         return f'<a class="button" href="/auth/login{next_params}">Google Login</a>'
 
+
 @auth_routes.route("/login")
 def login():
     # Find out what URL to hit for Google login
@@ -82,9 +89,7 @@ def login():
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
     # Save optional redirect after authentication
-    state = serialize_google_state({
-        "next": request.args.get("next")
-    }) or ""
+    state = serialize_google_state({"next": request.args.get("next")}) or ""
 
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
@@ -92,7 +97,7 @@ def login():
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
         scope=["openid", "email", "profile"],
-        state=state
+        state=state,
     )
     return redirect(request_uri)
 
