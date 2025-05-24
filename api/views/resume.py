@@ -8,10 +8,10 @@ from flask_login import login_required, current_user
 
 from db import db
 
-resume_routes = Blueprint("resume_routes", __name__, url_prefix="/resumes")
+resume_views = Blueprint("resume_views", __name__, url_prefix="/resumes")
 
 
-@resume_routes.get("/all")
+@resume_views.get("/all")
 @login_required
 def get_all_resumes():
     """
@@ -25,7 +25,7 @@ def get_all_resumes():
     return jsonify({"resumes": result})
 
 
-@resume_routes.get("/<id:int>")
+@resume_views.get("/<int:id>")
 @login_required
 def get_resume(id: int):
     """
@@ -40,19 +40,19 @@ def get_resume(id: int):
     return {"error": "Resume not found"}, 404
 
 
-@resume_routes.post("/create")
+@resume_views.post("/create")
 @login_required
 def create_resume():
     data = request.get_json()
     if not data.get("name"):
-        return jsonify({"error": "Missing title"}), 400
+        return jsonify({"error": "Missing name"}), 400
 
-    res = Resume(user_id=current_user.id, name=data["name"], education=[])
+    res = Resume(user_id=current_user.id, name=data["name"], sections=[])
     res.save_to_db()
     return jsonify({"message": "Resume created successfully"})
 
 
-@resume_routes.put("/update/<id:int>")
+@resume_views.put("/update/<int:id>")
 @login_required
 def update_resume(id: int):
     data = request.get_json()
@@ -73,7 +73,7 @@ def update_resume(id: int):
     return jsonify({"message": "Updated resume"})
 
 
-@resume_routes.delete("/delete/<id:int>")
+@resume_views.delete("/delete/<int:id>")
 @login_required
 def delete_resume(id: int):
     stmt = select(Resume).where(Resume.user_id == current_user.id and Resume.id == id)
@@ -91,7 +91,7 @@ def delete_resume(id: int):
 # #  Resume Item Operations
 
 
-# @resume_routes.route("/<uuid:resume_id>/items", methods=["POST"])
+# @resume_views.route("/<uuid:resume_id>/items", methods=["POST"])
 # def add_item_to_resume_route(resume_id: UUID):
 #     """Add a global item (Education, Experience, Project) to a resume."""
 #     data = request.get_json()
@@ -118,7 +118,7 @@ def delete_resume(id: int):
 #         return jsonify({"error": "An unexpected error occurred"}), 500
 
 
-# @resume_routes.route(
+# @resume_views.route(
 #     "/<uuid:resume_id>/items/<item_type_str>/<uuid:item_id>", methods=["PUT"]
 # )
 # def update_resume_item_route(resume_id: UUID, item_type_str: str, item_id: UUID):
@@ -149,7 +149,7 @@ def delete_resume(id: int):
 #         return jsonify({"error": "An unexpected error occurred"}), 500
 
 
-# @resume_routes.route(
+# @resume_views.route(
 #     "/<uuid:resume_id>/items/<item_type_str>/<uuid:item_id>", methods=["DELETE"]
 # )
 # def remove_item_from_resume_route(resume_id: UUID, item_type_str: str, item_id: UUID):

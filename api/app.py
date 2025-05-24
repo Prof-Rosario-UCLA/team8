@@ -27,12 +27,13 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = "auth_routes.index"
+login_manager.login_view = "auth_view.index"
 
 
 @login_manager.user_loader
 def load_user(user_id: int):
     from models.user import User
+
     stmt = db.select(User).filter_by(id=user_id)
     return db.session.execute(stmt).scalar()
 
@@ -43,11 +44,11 @@ def ping():
     return jsonify(message="Pong!")
 
 
-from views.auth import auth_routes
-from views.resume import resume_routes
+from views.auth import auth_view
+from views.resume import resume_views
 
-app.register_blueprint(auth_routes)
-app.register_blueprint(resume_routes)
+app.register_blueprint(auth_view)
+app.register_blueprint(resume_views)
 
 # Main execution
 if __name__ == "__main__":

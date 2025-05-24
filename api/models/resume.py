@@ -1,23 +1,25 @@
 import enum
 
-from typing import List
+from typing import List, override
 
 from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from models import Base
 from models.user import User
+from models.template import Template
 
 
 from db import db
 
 
-class Resume(db.Model):
+class Resume(db.Model, Base):
     __tablename__ = "resumes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id, ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(nullable=False)
-    template_id = mapped_column(ForeignKey("templates.id"), nullable=False)
+    template_id = mapped_column(ForeignKey(Template.id), nullable=False)
     created_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -27,6 +29,7 @@ class Resume(db.Model):
 
     sections: Mapped[List["ResumeSection"]] = relationship(back_populates="resume")
 
+    @override
     def json(self):
         return {
             "id": self.id,
@@ -37,16 +40,8 @@ class Resume(db.Model):
             "sections": [sec.json() for sec in self.sections],
         }
 
-    def save_to_db(self):
-        db.session.add(self)
-        db.session.commit()
 
-    def delete_from_db(self):
-        db.session.delete(self)
-        db.session.commit()
-
-
-class ResumeSection(db.Model):
+class ResumeSection(db.Model, Base):
     __tablename__ = "resume_sections"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -55,20 +50,13 @@ class ResumeSection(db.Model):
     resume: Mapped[Resume] = relationship(back_populates="sections")
     items: Mapped[List["ResumeItem"]] = relationship(back_populates="section")
 
+    @override
     def json(self):
         return {
             "id": self.id,
             "resume_id": self.resume_id,
             "items": [item.json() for item in self.items],
         }
-
-    def save_to_db(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def delete_from_db(self):
-        db.session.delete(self)
-        db.session.commit()
 
 
 class ResumeItemType(enum.Enum):
@@ -78,7 +66,7 @@ class ResumeItemType(enum.Enum):
     skill = "skill"
 
 
-class ResumeItem(db.Model):
+class ResumeItem(db.Model, Base):
     __tablename__ = "resume_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -100,8 +88,9 @@ class ResumeItem(db.Model):
     # Bulletpoints not saved but bullet items are on each line
     description: Mapped[str] = mapped_column(nullable=False)
 
-    section: Mapped[Resume] = relationship(back_populates="items")
+    section: Mapped[ResumeSection] = relationship(back_populates="items")
 
+    @override
     def json(self):
         return {
             "id": self.id,
@@ -113,11 +102,3 @@ class ResumeItem(db.Model):
             "end_date": self.end_date,
             "location": self.location,
         }
-
-    def save_to_db(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def delete_from_db(self):
-        db.session.delete(self)
-        db.session.commit()

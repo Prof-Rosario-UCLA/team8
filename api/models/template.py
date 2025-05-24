@@ -1,17 +1,19 @@
-import uuid
+from typing import override
 
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import (
-    Column,
-    String,
-)
+from sqlalchemy.orm import Mapped, mapped_column
 
-Base = declarative_base()
+from models import Base
+
+from db import db
 
 
-class Template(Base):
+class Template(db.Model, Base):
     __tablename__ = "templates"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String)
-    uri = Column(String, nullable=False)  # GCS link to LaTeX template
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    uri: Mapped[str] = mapped_column(nullable=False)  # GCS link to LaTeX template
+
+    @override
+    def json(self):
+        return {"id": self.id, "name": self.name, "uri": self.uri}

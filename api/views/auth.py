@@ -19,7 +19,7 @@ GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configura
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
-auth_routes = Blueprint("auth_routes", __name__, url_prefix="/auth")
+auth_view = Blueprint("auth_view", __name__, url_prefix="/auth")
 
 
 def get_google_provider_cfg():
@@ -60,7 +60,7 @@ def is_safe_url(url: str) -> bool:
 
 
 # Testing shim
-@auth_routes.route("/shim")
+@auth_view.route("/shim")
 def index():
     next_url = request.args.get("next")
     if next_url and is_safe_url(next_url):
@@ -82,7 +82,7 @@ def index():
         return f'<a class="button" href="/auth/login{next_params}">Google Login</a>'
 
 
-@auth_routes.route("/login")
+@auth_view.route("/login")
 def login():
     # Find out what URL to hit for Google login
     google_provider_cfg = get_google_provider_cfg()
@@ -102,7 +102,7 @@ def login():
     return redirect(request_uri)
 
 
-@auth_routes.route("/login/callback")
+@auth_view.route("/login/callback")
 def callback():
     # Get authorization code Google sent back to you
     code = request.args.get("code")
@@ -159,8 +159,7 @@ def callback():
             email=users_email,
             profile_picture=picture,
         )
-        db.session.add(user)
-        db.session.commit()
+        user.save_to_db()
     else:
         user = user[0]
 
@@ -181,11 +180,11 @@ def callback():
         return redirect(next_url)
 
     # Send user back to homepage
-    return redirect(url_for("auth_routes.index"))
+    return redirect(url_for("auth_view.index"))
 
 
-@auth_routes.route("/logout")
+@auth_view.route("/logout")
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("auth_routes.index"))
+    return redirect(url_for("auth_view.index"))
