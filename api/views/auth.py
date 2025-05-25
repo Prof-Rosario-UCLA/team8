@@ -15,7 +15,10 @@ import requests
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", None)
-GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
+GOOGLE_DISCOVERY_URL = (
+    os.environ.get("GOOGLE_DISCOVERY_URL", None)
+    or "https://accounts.google.com/.well-known/openid-configuration"
+)
 
 client = WebApplicationClient(GOOGLE_CLIENT_ID)
 
@@ -67,19 +70,25 @@ def index():
         next_params = "?next=" + next_url
     else:
         next_params = ""
+
+    # TODO: remove this hot garbage later
+    prefix = "/api" if "api" in request.path or True else ""
     if current_user.is_authenticated:
         return (
             "<p>Hello, {}! You're logged in! Email: {}</p>"
             "<div><p>Google Profile Picture:</p>"
             '<img src="{}" alt="Google profile pic"></img></div>'
-            '<a class="button" href="/auth/logout">Logout</a>'.format(
-                current_user.name, current_user.email, current_user.profile_picture
+            '<a class="button" href="{}/auth/logout">Logout</a>'.format(
+                current_user.name,
+                current_user.email,
+                current_user.profile_picture,
+                prefix,
             )
         )
     else:
         # Hotfix(bliutech): Temporary primitive XSS sanitization
         next_params = next_params.replace('"', "")
-        return f'<a class="button" href="/auth/login{next_params}">Google Login</a>'
+        return f'<a class="button" href="{prefix}/auth/login{next_params}">Google Login</a>'
 
 
 @auth_view.route("/login")
@@ -93,9 +102,13 @@ def login():
 
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
+    base_url = (
+        "http://" + request.headers.get("X-Forwarded-Host") + "/api" + request.path
+        or request.base_url
+    )
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
-        redirect_uri=request.base_url + "/callback",
+        redirect_uri=base_url + "/callback",
         scope=["openid", "email", "profile"],
         state=state,
     )
@@ -180,11 +193,13 @@ def callback():
         return redirect(next_url)
 
     # Send user back to homepage
-    return redirect(url_for("auth_view.index"))
+    base = "/api" if request.headers.get("X-Forwarded-Host") else ""
+    return redirect(base + url_for("auth_view.index"))
 
 
 @auth_view.route("/logout")
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("auth_view.index"))
+    base = "/api" if request.headers.get("X-Forwarded-Host") else ""
+    return redirect(base + url_for("auth_view.index"))
