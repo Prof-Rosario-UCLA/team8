@@ -72,7 +72,7 @@ def index():
         next_params = ""
 
     # TODO: remove this hot garbage later
-    prefix = "/api" if "api" in request.path or True else ""
+    prefix = "/api" if request.headers.get("X-Forwarded-Host") else ""
     if current_user.is_authenticated:
         return (
             "<p>Hello, {}! You're logged in! Email: {}</p>"
@@ -104,7 +104,8 @@ def login():
     # scopes that let you retrieve user's profile from Google
     base_url = (
         "http://" + request.headers.get("X-Forwarded-Host") + "/api" + request.path
-        or request.base_url
+        if request.headers.get("X-Forwarded-Host")
+        else request.base_url
     )
     request_uri = client.prepare_request_uri(
         authorization_endpoint,

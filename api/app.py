@@ -46,10 +46,12 @@ def ping():
 
 from views.auth import auth_view
 from views.resume import resume_views
+from views.template import template_views
 from views.user import user_views
 
 app.register_blueprint(auth_view)
 app.register_blueprint(resume_views)
+app.register_blueprint(template_views)
 app.register_blueprint(user_views)
 
 # Main execution
