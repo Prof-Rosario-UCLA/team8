@@ -1,7 +1,8 @@
 {
     "id": 1,
     "template": 1,
-    "name": "Jake's Resume",
+    "name": "Jake Resume",
+    "resume_name": "Jake's Resume",
     "phone": "(123) 456-7890",
     "email": "jake@example.com",
     "linkedin": "linkedin.com/in/jake",

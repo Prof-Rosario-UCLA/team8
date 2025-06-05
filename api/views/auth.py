@@ -28,7 +28,6 @@ auth_view = Blueprint("auth_view", __name__, url_prefix="/auth")
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
 
-
 # Google's OAuth2 protocol only supports passing a state parameter on
 # the redirect to the callback containing a base64 encoded JSON.
 # https://developers.google.com/identity/protocols/oauth2/web-server
@@ -61,6 +60,8 @@ def is_safe_url(url: str) -> bool:
 
 # Following code referenced from https://realpython.com/flask-google-login/
 
+
+# TODO, move the entire flask routes to under /api prefix (proxied from frontend /api to backend as /api as well so redirects are consistent and less prefix jank, don't reroute through X-Forwarded-Host, since now the paths are the same and will automatically be proxied to backend if appropriate or otherwise stay on frontend)
 
 # Testing shim
 @auth_view.route("/shim")
