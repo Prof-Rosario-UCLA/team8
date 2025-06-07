@@ -1,12 +1,17 @@
-from manager import celery_app
+import os
 import subprocess
 import tempfile
-import os
+
+from manager import celery_app
+from utils import upload_to_gcs
 
 @celery_app.task(bind=True, max_retries=3, track_started=True)
 def compile_latex_to_pdf(self, latex_code: str) -> str:
+    """
+    Compiles a LaTeX file to a PDF and uploads contents to
+    Google Cloud Storage and returns a URL to Google Cloud Storage.
+    """
     try:
-        print("Compiling...")
         with tempfile.TemporaryDirectory() as tmpdir:
             tex_path = os.path.join(tmpdir, "document.tex")
             pdf_path = os.path.join(tmpdir, "document.pdf")
@@ -26,8 +31,7 @@ def compile_latex_to_pdf(self, latex_code: str) -> str:
             if result.returncode != 0:
                 raise RuntimeError("LaTeX compilation failed")
 
-            with open(pdf_path, "rb") as pdf_file:
-                return pdf_file.read().hex()  # return PDF as hex string
+            return upload_to_gcs(pdf_path, f"{self.request.id}.pdf")
 
     except Exception as exc:
         print("Retrying...")

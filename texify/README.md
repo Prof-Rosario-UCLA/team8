@@ -11,8 +11,22 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Use an `.env` file that looks like the following.
+
+```
+GCS_BUCKET_NAME=test-bucket
+GCS_EMULATOR_HOST=http://localhost:4443
+GCS_EMULATOR=1
+```
+
 ## Running the Service
-First, start by starting the Celery worker.
+First, start by starting the Fake GCS service.
+
+```
+docker-compose up
+```
+
+Next, start the Celery worker.
 
 ```
 celery -A manager worker --loglevel=info
