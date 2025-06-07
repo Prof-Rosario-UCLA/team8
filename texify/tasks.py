@@ -5,6 +5,7 @@ import tempfile
 from manager import celery_app
 from utils import upload_to_gcs
 
+
 @celery_app.task(bind=True, max_retries=3, track_started=True)
 def compile_latex_to_pdf(self, latex_code: str) -> str:
     """
@@ -25,7 +26,7 @@ def compile_latex_to_pdf(self, latex_code: str) -> str:
                 ["pdflatex", "-interaction=nonstopmode", tex_path],
                 cwd=tmpdir,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
 
             if result.returncode != 0:

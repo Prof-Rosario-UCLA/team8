@@ -6,22 +6,22 @@ app = Flask(__name__)
 with open("../samples/resume.tex", "r") as file:
     latex_code = file.read()
 
-@app.get('/ping')
-def ping():
-    return 'Pong'
 
-@app.post('/compile')
+@app.get("/ping")
+def ping():
+    return "Pong"
+
+
+@app.post("/compile")
 def compile():
     task = compile_latex_to_pdf.delay(latex_code)
-    print(task)
-    return {
-        'task_id': task.id
-    }
+    return {"task_id": task.id}
 
-@app.get('/status/<task_id>')
+
+@app.get("/status/<task_id>")
 def status(task_id: str):
     task = compile_latex_to_pdf.AsyncResult(task_id)
-    print(task)
+    # Note that celery returns PENDING even if the task_id is not known
     if task.state == "PENDING":
         return {"status": "pending"}
     elif task.state == "FAILURE":
@@ -31,5 +31,6 @@ def status(task_id: str):
     else:
         return {"status": task.state}
 
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port='9090')
+    app.run(host="0.0.0.0", port="9090")

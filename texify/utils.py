@@ -9,15 +9,17 @@ load_dotenv()
 USE_EMULATOR = os.getenv("GCS_EMULATOR") == "1"
 BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
 
+
 def get_storage_client() -> Client:
     if USE_EMULATOR:
         return storage.Client(
             credentials=AnonymousCredentials(),
             project="test-project",
-            client_options={"api_endpoint": os.getenv("GCS_EMULATOR_HOST")}
+            client_options={"api_endpoint": os.getenv("GCS_EMULATOR_HOST")},
         )
     else:
         return storage.Client()
+
 
 def upload_to_gcs(file_path: str, blob_name: str) -> str:
     client = get_storage_client()
