@@ -7,7 +7,7 @@ from models.resume import Resume, ResumeSection, ResumeItem, ResumeAssociation
 from flask_login import login_required, current_user
 
 from db import db
-from api.controllers.resume import process_resume_update
+from controllers.resume import process_resume_update
 
 resume_views = Blueprint("resume_views", __name__, url_prefix="/resume")
 
