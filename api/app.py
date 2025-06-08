@@ -3,6 +3,7 @@ from flask_cors import CORS
 import os, uuid
 from dotenv import load_dotenv
 
+from flask_migrate import Migrate
 from db import db, init_db
 
 from flask_login import LoginManager
@@ -11,7 +12,6 @@ from flask_login import LoginManager
 load_dotenv(".flaskenv")
 
 app = Flask(__name__)
-
 # --- CORS Configuration ---
 # Allow requests from your Next.js development server (default port 3000)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
@@ -24,6 +24,9 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 )
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
+
+db.init_app(app)
+migrate = Migrate(app, db)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -58,5 +61,5 @@ app.register_blueprint(main_view)
 
 # Main execution
 if __name__ == "__main__":
-    # init_db(app)
+    init_db(app)
     app.run(debug=True, port=5001)

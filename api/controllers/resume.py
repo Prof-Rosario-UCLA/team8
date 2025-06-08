@@ -42,21 +42,13 @@ def _parse_item_data(item_payload: dict, user_id: int) -> dict | None:
     """
     Parses and validates item payload data. Returns a dictionary of parsed data or None if validation fails.
     """
-    required_fields = ["item_type", "title", "organization", "start_date", "location", "description"]
+    required_fields = ["title", "organization", "start_date", "location", "description"]
     for field in required_fields:
         if field not in item_payload or item_payload[field] is None:
             print(f"Warning: Missing required field {field} in item payload.")
             return None
 
-    try:
-        item_type_value = item_payload["item_type"]
-        item_type = ResumeItemType(str(item_type_value))
-    except ValueError:
-        print(f"Warning: Invalid item_type: {item_payload.get('item_type')}")
-        return None
-
     parsed_data = {
-        "item_type": item_type,
         "title": str(item_payload["title"]),
         "organization": str(item_payload["organization"]),
         "start_date": parse_iso_date_string(item_payload["start_date"]),
@@ -80,17 +72,20 @@ def _find_or_create_item(item_payload: dict, user_id: int, section_id: int, disp
     item_id = item_payload.get("id")
     item = None
 
-    # Only lookup if ID is an int from DB. Client-side IDs are strings.
-    if isinstance(item_id, int):
-        stmt = select(ResumeItem).where(
-            ResumeItem.id == item_id, 
-            ResumeItem.user_id == user_id,
-            ResumeItem.section_id == section_id # Item must belong to the section being processed
-        )
-        item = db_session.execute(stmt).scalar_one_or_none()
-        if not item:
-            print(f"Warning: ResumeItem with id {item_id} not found for user {user_id} and section {section_id}.")
-            return None
+    if item_id is not None:
+        try:
+            item_id = int(item_id)
+            stmt = select(ResumeItem).where(
+                ResumeItem.id == item_id, 
+                ResumeItem.user_id == user_id,
+                ResumeItem.section_id == section_id # Item must belong to the section being processed
+            )
+            item = db_session.execute(stmt).scalar_one_or_none()
+            # If item is not found, we fall through and create a new one below.
+        except (ValueError, TypeError):
+            # If item_id is not a valid integer (e.g., a client-side UUID), treat as a new item.
+            item = None
+            print(f"Warning: Invalid item_id format: {item_payload.get('id')}. Treating as new item.")
 
     parsed_data = _parse_item_data(item_payload, user_id)
     if not parsed_data:
@@ -118,22 +113,24 @@ def _find_or_create_section(section_payload: dict, resume_id: int, user_id: int,
     section_id = section_payload.get("id")
     section = None
 
-    # Only lookup if ID is an int from DB. Client-side IDs are strings.
-    if isinstance(section_id, int):
-        stmt = select(ResumeSection).where(
-            ResumeSection.id == section_id, 
-            ResumeSection.user_id == user_id, 
-            ResumeSection.resume_id == resume_id
-        )
-        section = db_session.execute(stmt).scalar_one_or_none()
-        if not section:
-            print(f"Warning: ResumeSection with id {section_id} not found for user {user_id} and resume {resume_id}.")
-            # As with items, don't create if an invalid ID was passed.
-            return None
+    if section_id is not None:
+        try:
+            section_id = int(section_id)
+            stmt = select(ResumeSection).where(
+                ResumeSection.id == section_id, 
+                ResumeSection.user_id == user_id, 
+                ResumeSection.resume_id == resume_id
+            )
+            section = db_session.execute(stmt).scalar_one_or_none()
+            # If section is not found, we fall through to create a new one below.
+        except (ValueError, TypeError):
+            # If section_id is not a valid int, treat as a new section.
+            section = None
+            print(f"Warning: Invalid section_id format: {section_payload.get('id')}. Treating as new section.")
 
     section_type_input = section_payload.get("type") or section_payload.get("section_type")
     try:
-        section_type_val = ResumeItemType(str(section_type_input))
+        section_type_val = ResumeItemType(str(section_type_input).lower()) # lower in case frontend sends it with capitalized letters
     except ValueError:
         print(f"Warning: Invalid section_type: {section_type_input}")
         return None

@@ -104,7 +104,7 @@ def login():
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
     base_url = (
-        "http://" + request.headers.get("X-Forwarded-Host") + "/api" + request.path
+        "http://" + request.headers.get("X-Forwarded-Host") + request.path
         if request.headers.get("X-Forwarded-Host")
         else request.base_url
     )

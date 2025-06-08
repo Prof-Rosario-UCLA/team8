@@ -105,11 +105,19 @@ def update_resume(id: int):
         return jsonify({"error": "Resume not found or access denied"}), 404
 
     try:
-        updated_resume = process_resume_update(resume_to_update, data, current_user.id, db.session)
+        process_resume_update(resume_to_update, data, current_user.id, db.session)
         
         db.session.commit()
         
-        return jsonify({"message": "Resume updated successfully", "resume": updated_resume.json()})
+        # Re-fetch the entire resume to get the latest state with new IDs
+        updated_resume = get_full_resume(id, current_user.id, db.session)
+        
+        if not updated_resume:
+            # This would be unusual, but handle it
+            return jsonify({"error": "Could not retrieve updated resume."}), 404
+
+        # The frontend expects the resume object directly
+        return jsonify(updated_resume.json())
     
     except Exception as e:
         db.session.rollback()

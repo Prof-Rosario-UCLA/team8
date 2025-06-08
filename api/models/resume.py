@@ -99,7 +99,6 @@ class ResumeItem(db.Model, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id, ondelete="CASCADE"))
-    item_type: Mapped[ResumeItemType] = mapped_column(nullable=False)
 
     # university degree, job title, project name
     title: Mapped[str] = mapped_column(nullable=False)
@@ -126,7 +125,6 @@ class ResumeItem(db.Model, Base):
             "id": self.id,
             "user_id": self.user_id,
             "section_id": self.section_id, # Include parent section ID
-            "item_type": self.item_type.value,
             "title": self.title,
             "organization": self.organization,
             "start_date": self.start_date.isoformat() if self.start_date else None,
