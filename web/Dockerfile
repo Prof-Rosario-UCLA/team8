@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json /app/
 
 # TODO(bliutech): remove --force once dependencies are fixed
-RUN npm ci --force
+RUN npm ci 
 
 COPY . /app
 
