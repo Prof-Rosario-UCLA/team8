@@ -73,23 +73,21 @@ def index():
         next_params = ""
 
     # TODO: remove this hot garbage later
-    prefix = "/api" if request.headers.get("X-Forwarded-Host") else ""
     if current_user.is_authenticated:
         return (
             "<p>Hello, {}! You're logged in! Email: {}</p>"
             "<div><p>Google Profile Picture:</p>"
             '<img src="{}" alt="Google profile pic"></img></div>'
-            '<a class="button" href="{}/auth/logout">Logout</a>'.format(
+            '<a class="button" href="/api/auth/logout">Logout</a>'.format(
                 current_user.name,
                 current_user.email,
                 current_user.profile_picture,
-                prefix,
             )
         )
     else:
         # Hotfix(bliutech): Temporary primitive XSS sanitization
         next_params = next_params.replace('"', "")
-        return f'<a class="button" href="{prefix}/auth/login{next_params}">Google Login</a>'
+        return f'<a class="button" href="/api/auth/login{next_params}">Google Login</a>'
 
 
 @auth_view.route("/login")
@@ -196,7 +194,7 @@ def callback():
 
     # Send user back to homepage
     base = "/api" if request.headers.get("X-Forwarded-Host") else ""
-    return redirect(base + url_for("auth_view.index"))
+    return redirect(base + url_for("main_view.auth_view.index"))
 
 
 @auth_view.route("/logout")
@@ -204,4 +202,4 @@ def callback():
 def logout():
     logout_user()
     base = "/api" if request.headers.get("X-Forwarded-Host") else ""
-    return redirect(base + url_for("auth_view.index"))
+    return redirect(base + url_for("main_view.auth_view.index"))

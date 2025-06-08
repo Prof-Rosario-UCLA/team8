@@ -59,7 +59,8 @@ main_view.register_blueprint(user_views)
 
 app.register_blueprint(main_view)
 
+init_db(app)
+
 # Main execution
 if __name__ == "__main__":
-    init_db(app)
     app.run(debug=True, port=5001)
