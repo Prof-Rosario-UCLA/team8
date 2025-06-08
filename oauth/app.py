@@ -6,10 +6,10 @@ app.logger.setLevel(logging.INFO)
 
 PORT = 9000
 AUTHORIZED_REDIRECT_URLS = [
-    "http://127.0.0.1:300/auth/login/callback",
     "http://localhost:3000/api/auth/login/callback",
-    "http://localhost:5001/auth/login/callback",
-    "http://127.0.0.1:5001/auth/login/callback",
+    "http://127.0.0.1:3000/api/auth/login/callback",
+    "http://localhost:5001/api/auth/login/callback",
+    "http://127.0.0.1:5001/api/auth/login/callback",
 ]
 
 
@@ -21,12 +21,12 @@ def get_openid_config():
     app.logger.info("Retrieved OpenID config.")
     return {
         "issuer": "https://accounts.google.com",
-        "authorization_endpoint": f"http://localhost:{PORT}/auth"
+        "authorization_endpoint": f"http://127.0.0.1:{PORT}/auth" or f"http://localhost:{PORT}/auth"
         or "https://accounts.google.com/o/oauth2/v2/auth",
         "device_authorization_endpoint": "https://oauth2.googleapis.com/device/code",
-        "token_endpoint": f"http://localhost:{PORT}/token"
+        "token_endpoint": f"http://oauth:{PORT}/token" or f"http://localhost:{PORT}/token"
         or "https://oauth2.googleapis.com/token",
-        "userinfo_endpoint": f"http://localhost:{PORT}/userinfo"
+        "userinfo_endpoint": f"http://oauth:{PORT}/userinfo" or f"http://localhost:{PORT}/userinfo"
         or "https://openidconnect.googleapis.com/v1/userinfo",
         "revocation_endpoint": "https://oauth2.googleapis.com/revoke",
         "jwks_uri": "https://www.googleapis.com/oauth2/v3/certs",
