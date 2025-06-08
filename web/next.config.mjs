@@ -7,7 +7,7 @@ const nextConfig = {
       {
         source: '/api/:path*',
         // Proxy to the Flask app (5001 in our scripts)
-        destination: 'http://127.0.0.1:5001/:path*',
+        destination: 'http://127.0.0.1:5001/api/:path*',
       },
     ];
   },

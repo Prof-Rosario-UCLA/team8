@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, Blueprint, jsonify
 from flask_cors import CORS
 import os, uuid
 from dotenv import load_dotenv
@@ -48,10 +48,13 @@ from views.resume import resume_views
 from views.template import template_views
 from views.user import user_views
 
-app.register_blueprint(auth_view)
-app.register_blueprint(resume_views)
-app.register_blueprint(template_views)
-app.register_blueprint(user_views)
+main_view = Blueprint("main_view", __name__, url_prefix="/api")
+main_view.register_blueprint(auth_view)
+main_view.register_blueprint(resume_views)
+main_view.register_blueprint(template_views)
+main_view.register_blueprint(user_views)
+
+app.register_blueprint(main_view)
 
 # Main execution
 if __name__ == "__main__":
