@@ -46,7 +46,7 @@ class LatexEnvironment(Environment):
         return template.render(escaped_context)
 
 @celery_app.task(bind=True, max_retries=1, track_started=True)
-def compile_latex_to_pdf(self, latex_code: str) -> str:
+def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
     """
     Compiles a LaTeX file to a PDF and uploads contents to
     Google Cloud Storage and returns a URL to Google Cloud Storage.
@@ -58,9 +58,6 @@ def compile_latex_to_pdf(self, latex_code: str) -> str:
             comment_end_string='=}',
             autoescape=False
         )
-
-        with open("../samples/resume.json", "r") as f:
-            data = json.load(f)
         
         for section in data.get("sections", []):
             section_name = section.get("name").lower().replace(" ", "_")
@@ -72,6 +69,7 @@ def compile_latex_to_pdf(self, latex_code: str) -> str:
                 data[section_name].append(item)
         del data["sections"]
 
+        # TODO(bliutech): add support for downloading templates and selecting them
         latex_code = env._render_with_escaped_context("resume.j2", data)
 
         with tempfile.TemporaryDirectory() as tmpdir:

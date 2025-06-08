@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from tasks import compile_latex_to_pdf
 
 app = Flask(__name__)
@@ -14,7 +14,10 @@ def ping():
 
 @app.post("/compile")
 def compile():
-    task = compile_latex_to_pdf.delay(latex_code)
+    data = request.get_json()
+    if not data.get("template") or not data.get("data"):
+        return {"error": "Missing template or data."}
+    task = compile_latex_to_pdf.delay(data.get("template"), data.get("data"))
     return {"task_id": task.id}
 
 
