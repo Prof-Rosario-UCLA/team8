@@ -1,13 +1,14 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import select, and_, func, delete
+from sqlalchemy.orm import selectinload
 
 from models.user import User
-from models.resume import Resume, ResumeSection, ResumeItem, ResumeAssociation
-
+from models.resume import Resume, ResumeSection, ResumeItem
+from models.template import Template
 from flask_login import login_required, current_user
 
 from db import db
-from controllers.resume import process_resume_update
+from controllers.resume import process_resume_update, get_full_resume
 
 resume_views = Blueprint("resume_views", __name__, url_prefix="/resume")
 
@@ -33,46 +34,63 @@ def get_all_resumes():
 def get_resume(id: int):
     """
     Return a resume belonging to the current user
-    with a given resume id.
+    with a given resume id, using the controller to fetch it.
     """
-    stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == id))
-    result = db.session.execute(stmt)
-    result = result.scalar()
-    if result:
-        return result.json()
-    return {"error": "Resume not found"}, 404
+    resume = get_full_resume(id, current_user.id, db.session)
+    if resume:
+        return resume.json()
+    return jsonify({"error": "Resume not found"}), 404
 
 
 @resume_views.post("/create")
 @login_required
 def create_resume():
-    data = request.get_json()
-    if not data or not data.get("name"):
-        return jsonify({"error": "Missing name"}), 400
-    if not data.get("resume_name"):
-        return jsonify({"error": "Missing resume_name"}), 400
-    if not data.get("template_id"):
-        return jsonify({"error": "Missing template_id"}), 400
+    """
+    Creates a new resume with default values for the current user.
+    It does not require any data in the request body.
+    """
+    # Find a default template to assign to the new resume.
+    default_template = db.session.execute(select(Template).limit(1)).scalar_one_or_none()
+    if not default_template:
+        return jsonify({"error": "No templates found in the system. Cannot create a resume."}), 500
 
+    # Generate a unique default name for the resume (e.g., "Untitled Resume (2)").
+    base_name = "Untitled Resume"
+    existing_names_stmt = select(Resume.name).where(
+        Resume.user_id == current_user.id,
+        Resume.name.like(f"{base_name}%")
+    )
+    existing_names = db.session.execute(existing_names_stmt).scalars().all()
+    
+    new_name = base_name
+    counter = 1
+    while new_name in existing_names:
+        counter += 1
+        new_name = f"{base_name} ({counter})"
+
+    # Create the new resume object with the default values.
     res = Resume()
     res.user_id = current_user.id
-    res.name = data["name"]
-    res.resume_name = data["resume_name"]
-    res.template_id = data["template_id"]
-    if "phone" in data:
-        res.phone = data["phone"]
-    if "email" in data:
-        res.email = data["email"]
-    if "linkedin" in data:
-        res.linkedin = data["linkedin"]
-    if "github" in data:
-        res.github = data["github"]
-    if "website" in data:
-        res.website = data["website"]
-        
+    res.name = new_name
+    
+    res.resume_name = "Untitled Resume"
+    res.template_id = default_template.id
+    # Other fields (phone, email, etc.) will be null by default, though we could
+    # also default the resume's 'email' field to current_user.email here.
+    res.email = current_user.email
+    
     res.save_to_db()
-    return jsonify({"message": f"Resume (id = {res.id})created successfully"})
+    db.session.flush() # Ensure the new ID is available for get_full_resume
 
+    # Fetch the full resume object to return to the frontend.
+    new_resume = get_full_resume(res.id, current_user.id, db.session)
+
+    # Return the new resume object with a 201 Created status code.
+    if new_resume:
+        return jsonify(new_resume.json()), 201
+    else:
+        # This case should ideally not be reached if creation was successful.
+        return jsonify({"error": "Failed to retrieve the created resume."}), 500
 
 @resume_views.put("/update/<int:id>")
 @login_required
@@ -81,8 +99,7 @@ def update_resume(id: int):
     if not data or type(data) != dict:
         return jsonify({"error": "Missing required data"}), 400
 
-    stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == id))
-    resume_to_update = db.session.execute(stmt).scalar_one_or_none()
+    resume_to_update = get_full_resume(id, current_user.id, db.session)
 
     if not resume_to_update:
         return jsonify({"error": "Resume not found or access denied"}), 404
@@ -236,80 +253,6 @@ def delete_resume_section(resume_id: int, id: int):
     return jsonify({"message": "Deleted resume section"})
 
 
-@resume_views.patch("/section/link/<int:resume_id>/<int:section_id>/<int:item_id>")
-@login_required
-def link_resume_item_to_section(resume_id: int, section_id: int, item_id: int):
-    data = request.get_json()
-
-    resume_check_stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == resume_id))
-    if not db.session.execute(resume_check_stmt).scalar():
-        return jsonify({"error": "Resume not found or access denied"}), 404
-
-    section_stmt = select(ResumeSection).where(
-        and_(ResumeSection.user_id == current_user.id,
-             ResumeSection.resume_id == resume_id,
-             ResumeSection.id == section_id)
-    )
-    section = db.session.execute(section_stmt).scalar()
-    if not section:
-        return jsonify({"error": "Resume section not found or not part of this resume"}), 404
-
-    item_stmt = select(ResumeItem).where(
-        and_(ResumeItem.user_id == current_user.id, ResumeItem.id == item_id)
-    )
-    item = db.session.execute(item_stmt).scalar()
-    if not item:
-        return jsonify({"error": "Resume item not found or access denied"}), 404
-
-    existing_assoc_stmt = select(ResumeAssociation).where(
-        and_(ResumeAssociation.section_id == section.id,
-             ResumeAssociation.item_id == item.id,
-             ResumeAssociation.user_id == current_user.id) 
-    )
-    if db.session.execute(existing_assoc_stmt).scalar():
-        return jsonify({"error": "Item already linked to this section"}), 400
-    
-    display_order_val = data.get("display_order") if data else None
-
-    if display_order_val is None: 
-        max_order_stmt = select(func.max(ResumeAssociation.display_order)).where(
-            and_(ResumeAssociation.user_id == current_user.id,
-                 ResumeAssociation.section_id == section.id)
-        )
-        max_order = db.session.execute(max_order_stmt).scalar()
-        display_order_val = (max_order or -1) + 1
-    
-    assoc = ResumeAssociation()
-    assoc.user_id = current_user.id
-    assoc.section_id = section.id
-    assoc.item_id = item.id
-    assoc.display_order = display_order_val
-    assoc.save_to_db()
-    db.session.flush()
-
-    return jsonify({"message": "Linked resume section to item", "association": assoc.json()})
-
-
-@resume_views.patch("/section/unlink/<int:resume_id>/<int:section_id>/<int:item_id>")
-@login_required
-def unlink_resume_item_from_section(resume_id: int, section_id: int, item_id: int):
-    resume_check_stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == resume_id))
-    if not db.session.execute(resume_check_stmt).scalar():
-        return jsonify({"error": "Resume not found or access denied"}), 404
-    
-    stmt = select(ResumeAssociation).where(
-        and_(ResumeAssociation.user_id == current_user.id,
-             ResumeAssociation.section_id == section_id,
-             ResumeAssociation.item_id == item_id)
-    )
-    assoc = db.session.execute(stmt).scalar()
-    if not assoc:
-        return {"error": "Link not found"}, 404
-
-    assoc.delete_from_db()
-    return jsonify({"message": "Unlinked resume item from section"})
-
-
 # ==================== Resume Items Routes ====================
 
 
@@ -398,11 +341,6 @@ def delete_resume_item(id: int):
     if not item:
         return {"error": "Resume item not found."}, 404
 
-    assoc_stmt = delete(ResumeAssociation).where(
-        and_(ResumeAssociation.item_id == item.id, ResumeAssociation.user_id == current_user.id)
-    )
-    db.session.execute(assoc_stmt)
-    
     item.delete_from_db()
 
     return jsonify({"message": "Resume item deleted"})
