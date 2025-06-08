@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ResumeItemType } from "@/lib/types/Resume"
@@ -9,12 +9,6 @@ import LabelledInput from "../ui/LabelledInput"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ChevronUpIcon, ChevronDownIcon } from "lucide-react"
-
-const capitalize = (s: string) => {
-  if (typeof s !== 'string' || !s) return ''
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-
 interface ResumeItemCardProps {
   resumeItem: ResumeItemType;
   compact?: boolean;
@@ -138,7 +132,7 @@ export default function ResumeItemCard({
                   className="flex-1 min-w-0"
                   input={
                     <ResumeMonthYearField
-                      value={resumeItem.start_date ? new Date(resumeItem.start_date) : null}
+                      value={resumeItem.start_date}
                       onChange={(date) => handleFieldChange("start_date", date)}
                       compact={compact}
                       className="w-full"
@@ -150,7 +144,7 @@ export default function ResumeItemCard({
                   className="flex-1 min-w-0"
                   input={
                     <ResumeMonthYearField
-                      value={resumeItem.end_date ? new Date(resumeItem.end_date) : null}
+                      value={resumeItem.end_date}
                       onChange={(date) => handleFieldChange("end_date", date)}
                       compact={compact}
                       className="w-full"
@@ -170,7 +164,7 @@ export default function ResumeItemCard({
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  value={resumeItem.start_date ? new Date(resumeItem.start_date) : null}
+                  value={resumeItem.start_date}
                   onChange={(date) => handleFieldChange("start_date", date)}
                   compact={true}
                   className="w-full"
@@ -182,7 +176,7 @@ export default function ResumeItemCard({
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  value={resumeItem.end_date ? new Date(resumeItem.end_date) : null}
+                  value={resumeItem.end_date}
                   onChange={(date) => handleFieldChange("end_date", date)}
                   compact={true}
                   className="w-full"

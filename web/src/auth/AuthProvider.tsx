@@ -12,40 +12,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState(null);
-  const [checked, setChecked] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('fetching user');
     setIsLoading(true);
 
     // waiting for auth setup
 
     fetch('/api/user/me', { credentials: 'include' })
-      .then(res => {
-        console.log(`Response: ${res.ok} ${JSON.stringify(res.body)}`);
-        return res.ok ? res.json() : null;
-      })
+      .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        console.log(`User data: ${JSON.stringify(data)}`);
         if (!data) {
           router.push(`/api/auth/login?next=${pathname}`);
         } else {
           setUser(data);
         }
-      }).catch(err => {
+      }).catch(() => {
         router.push(`/api/auth/login?next=${pathname}`);
       })
       .finally(() => {
-        setChecked(true);
         setIsLoading(false);
       });
-  }, []);
+  }, [router, pathname]);
 
-  if (!checked) return <LoadingPage />;
+  if (isLoading) return <LoadingPage />;
 
   return (
     <AuthContext.Provider value={{ user }}>
@@ -54,4 +47,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === null) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

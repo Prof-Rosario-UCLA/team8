@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import ResumeSection from "@/components/resume/ResumeSectionCard"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react"
-import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES } from "@/lib/types/Resume"
+import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES, ResumeUpdatePayload } from "@/lib/types/Resume"
 import LoadingPage from "@/components/loading/Loading"
 import { parseDates } from "@/lib/utils/date"
 import {
@@ -38,7 +38,7 @@ function useResumeEditor(resumeId: string) {
         console.log('Resume data received:', data)
 
         // Recursively parse date strings into Date objects
-        const resumeDataWithDates: ResumeType = parseDates(data)
+        const resumeDataWithDates = parseDates(data) as ResumeType
         
         setResume(resumeDataWithDates)
       } catch (error) {
@@ -217,20 +217,18 @@ function useResumeEditor(resumeId: string) {
   const saveResume = async () => {
     if (!resume) return
     
-    // Create a deep copy to modify for the payload without affecting local state
-    const payload = JSON.parse(JSON.stringify(resume));
-
-    // Replace temporary string IDs with null for the backend
-    payload.sections.forEach((section: any) => {
-      if (typeof section.id === 'string') {
-        section.id = null;
-      }
-      section.items.forEach((item: any) => {
-        if (typeof item.id === 'string') {
-          item.id = null;
-        }
-      });
-    });
+    // Create a payload with temporary string IDs converted to null
+    const payload: ResumeUpdatePayload = {
+      ...resume,
+      sections: resume.sections.map(section => ({
+        ...section,
+        id: typeof section.id === 'string' ? null : section.id,
+        items: section.items.map(item => ({
+          ...item,
+          id: typeof item.id === 'string' ? null : item.id,
+        })),
+      })),
+    };
     
     const response = await fetch(`/api/resume/update/${resume.id}`, {
       method: 'PUT',
@@ -250,7 +248,7 @@ function useResumeEditor(resumeId: string) {
     console.log('Resume saved, server response:', data)
 
     // Update the local state with the server's version of the resume
-    const resumeDataWithDates: ResumeType = parseDates(data)
+    const resumeDataWithDates = parseDates(data) as ResumeType
     setResume(resumeDataWithDates);
 
     setHasUnsavedChanges(false)

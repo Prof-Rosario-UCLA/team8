@@ -54,5 +54,18 @@ export interface ResumeType {
   github: string
   website: string
   sections: ResumeSectionType[] // Array position = display order
-  updated_at: Date | string | null
+  updated_at: Date | null
 }
+
+// These types are for the payload sent to the backend when creating/updating a resume.
+// Temporary string IDs are replaced with null.
+export type ResumeItemPayload = Omit<ResumeItemType, 'id'> & { id: number | null };
+
+export type ResumeSectionPayload = Omit<ResumeSectionType, 'id' | 'items'> & {
+  id: number | null;
+  items: ResumeItemPayload[];
+};
+
+export type ResumeUpdatePayload = Omit<ResumeType, 'sections'> & {
+  sections: ResumeSectionPayload[];
+};

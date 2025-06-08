@@ -36,7 +36,7 @@ export default function ResumeDashboard() {
       const data = await response.json()
       
       // Use the centralized utility to parse dates in the entire resumes array
-      setResumes(parseDates(data.resumes))
+      setResumes(parseDates(data.resumes) as ResumeType[])
 
     } catch (error) {
       console.error("Error fetching resumes:", error);

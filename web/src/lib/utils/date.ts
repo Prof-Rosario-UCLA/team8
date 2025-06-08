@@ -1,5 +1,5 @@
 // Helper function to recursively convert date strings to Date objects in any nested structure.
-export const parseDates = (data: any): any => {
+export const parseDates = (data: unknown): unknown => {
   if (!data) return data;
 
   // Check if the string matches a common ISO 8601 format.
@@ -18,9 +18,11 @@ export const parseDates = (data: any): any => {
 
   // If it's an object, recurse on each value.
   if (typeof data === 'object' && data !== null) {
-    const newData: { [key: string]: any } = {};
+    const newData: { [key: string]: unknown } = {};
     for (const key in data) {
-      newData[key] = parseDates(data[key]);
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        newData[key] = parseDates((data as Record<string, unknown>)[key]);
+      }
     }
     return newData;
   }
