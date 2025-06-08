@@ -33,8 +33,6 @@ services:
       - GCS_EMULATOR=1
     depends_on:
       - redis
-    networks:
-      - internal_network
     restart: unless-stopped
   oauth:
     build:
@@ -45,11 +43,9 @@ services:
     restart: unless-stopped
   gcs:
     image: fsouza/fake-gcs-server
-    command: -scheme http -external-url http://localhost:4443
+    command: -scheme http -external-url http://gcs:4443
     ports:
       - "4443:4443"
-    networks:
-      - internal_network
     restart: unless-stopped
   db:
     image: postgres:latest
@@ -62,9 +58,5 @@ services:
     restart: unless-stopped
   redis:
     image: redis:latest
-    networks:
-      - internal_network
-
-networks:
-  internal_network:
-    driver: bridge
+    ports:
+      - "6379:6379"

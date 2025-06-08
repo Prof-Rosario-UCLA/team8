@@ -34,6 +34,6 @@ def upload_to_gcs(file_path: str, blob_name: str) -> str:
 
     if USE_EMULATOR:
         # Construct URL manually (no signed URL support in emulator)
-        return f"{os.getenv('GCS_EMULATOR_HOST')}/download/storage/v1/b/{BUCKET_NAME}/o/{blob_name}"
+        return f"{os.getenv('GCS_EMULATOR_HOST').replace('gcs', 'localhost')}/download/storage/v1/b/{BUCKET_NAME}/o/{blob_name}"
     else:
         return blob.generate_signed_url(version="v4", expiration=3600, method="GET")
