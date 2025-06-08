@@ -4,6 +4,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        SERVER_URL: http://api:5001
     ports:
       - "3000:3000"
     environment:
