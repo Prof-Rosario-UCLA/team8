@@ -40,9 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# PNPM
-pnpm-lock.yaml
-
 # Node / Next.js
 node_modules/
 /web/.next/
@@ -84,3 +81,6 @@ pip-wheel-metadata/
 *.swo
 
 .vscode/
+
+# ignore migrations
+migrations/
