@@ -1,0 +1,8 @@
+.ruff_cache/
+__pycache__/
+fake-gcs-data/
+venv/
+.env
+Dockerfile
+docker-compose.yml
+README.md

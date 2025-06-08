@@ -3,9 +3,6 @@ from tasks import compile_latex_to_pdf
 
 app = Flask(__name__)
 
-with open("../samples/resume.tex", "r") as file:
-    latex_code = file.read()
-
 
 @app.get("/ping")
 def ping():

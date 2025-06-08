@@ -1,4 +1,5 @@
 import os
+import time
 import subprocess
 import tempfile
 
@@ -45,7 +46,7 @@ class LatexEnvironment(Environment):
         template = self.get_template(template_name)
         return template.render(escaped_context)
 
-@celery_app.task(bind=True, max_retries=1, track_started=True)
+@celery_app.task(bind=True, max_retries=0, track_started=True)
 def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
     """
     Compiles a LaTeX file to a PDF and uploads contents to
@@ -53,28 +54,32 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
     """
     try:
         env = LatexEnvironment(
-            loader=FileSystemLoader('../samples'),
+            loader=FileSystemLoader('.'),
             comment_start_string='{=',
             comment_end_string='=}',
             autoescape=False
         )
+
+        new_data = data.copy()
         
         for section in data.get("sections", []):
             section_name = section.get("name").lower().replace(" ", "_")
-            data[section_name] = []
+            new_data[section_name] = []
             for item in section.get("items", []):
                 new_item = item
-                if section_name != "technical_skills":
+                if section_name != "technical_skills" and type(item["description"]) == str:
                     new_item["description"] = item["description"].split("\n")
-                data[section_name].append(item)
-        del data["sections"]
+                new_data[section_name].append(item)
+        del new_data["sections"]
 
         # TODO(bliutech): add support for downloading templates and selecting them
-        latex_code = env._render_with_escaped_context("resume.j2", data)
+        latex_code = env._render_with_escaped_context("resume.j2", new_data)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tex_path = os.path.join(tmpdir, "document.tex")
             pdf_path = os.path.join(tmpdir, "document.pdf")
+
+            print(tex_path)
 
             # Write the LaTeX source to a .tex file
             with open(tex_path, "w") as f:
@@ -82,14 +87,17 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
 
             # Compile using pdflatex
             result = subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode", tex_path],
+                ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "document.tex"],
                 cwd=tmpdir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                timeout=5
             )
 
             if result.returncode != 0:
-                raise RuntimeError("LaTeX compilation failed")
+                raise RuntimeError(f"LaTeX compilation failed {result.stderr} {result.stdout}")
+            
+            print("Finished compiling")
 
             return upload_to_gcs(pdf_path, f"{self.request.id}.pdf")
 
