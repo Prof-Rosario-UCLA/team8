@@ -27,7 +27,7 @@ def status(task_id: str):
     elif task.state == "FAILURE":
         return {"status": "failure", "error": str(task.result)}
     elif task.state == "SUCCESS":
-        return {"status": "done", "pdf_hex": task.result}
+        return {"status": "done", "url": task.result}
     else:
         return {"status": task.state}
 

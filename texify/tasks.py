@@ -16,17 +16,18 @@ def escape_latex(value):
     You can extend this for full LaTeX safety.
     """
     return (
-        value.replace('\\', r'\\')
-             .replace('%', r'\%')
-             .replace('&', r'\&')
-             .replace('$', r'\$')
-             .replace('#', r'\#')
-             .replace('_', r'\_')
-             .replace('{', r'\{')
-             .replace('}', r'\}')
-             .replace('~', r'\textasciitilde{}')
-             .replace('^', r'\^{}')
+        value.replace("\\", r"\\")
+        .replace("%", r"\%")
+        .replace("&", r"\&")
+        .replace("$", r"\$")
+        .replace("#", r"\#")
+        .replace("_", r"\_")
+        .replace("{", r"\{")
+        .replace("}", r"\}")
+        .replace("~", r"\textasciitilde{}")
+        .replace("^", r"\^{}")
     )
+
 
 class LatexEnvironment(Environment):
     def __init__(self, **kwargs):
@@ -42,9 +43,11 @@ class LatexEnvironment(Environment):
                 return {k: auto_escape(v) for k, v in value.items()}
             else:
                 return escape_latex(str(value))
+
         escaped_context = {k: auto_escape(v) for k, v in context.items()}
         template = self.get_template(template_name)
         return template.render(escaped_context)
+
 
 @celery_app.task(bind=True, max_retries=0, track_started=True)
 def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
@@ -54,20 +57,23 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
     """
     try:
         env = LatexEnvironment(
-            loader=FileSystemLoader('.'),
-            comment_start_string='{=',
-            comment_end_string='=}',
-            autoescape=False
+            loader=FileSystemLoader("."),
+            comment_start_string="{=",
+            comment_end_string="=}",
+            autoescape=False,
         )
 
         new_data = data.copy()
-        
+
         for section in data.get("sections", []):
             section_name = section.get("name").lower().replace(" ", "_")
             new_data[section_name] = []
             for item in section.get("items", []):
                 new_item = item
-                if section_name != "technical_skills" and type(item["description"]) == str:
+                if (
+                    section_name != "technical_skills"
+                    and type(item["description"]) == str
+                ):
                     new_item["description"] = item["description"].split("\n")
                 new_data[section_name].append(item)
         del new_data["sections"]
@@ -87,16 +93,23 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
 
             # Compile using pdflatex
             result = subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "document.tex"],
+                [
+                    "pdflatex",
+                    "-interaction=nonstopmode",
+                    "-halt-on-error",
+                    "document.tex",
+                ],
                 cwd=tmpdir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=5
+                timeout=5,
             )
 
             if result.returncode != 0:
-                raise RuntimeError(f"LaTeX compilation failed {result.stderr} {result.stdout}")
-            
+                raise RuntimeError(
+                    f"LaTeX compilation failed {result.stderr} {result.stdout}"
+                )
+
             print("Finished compiling")
 
             return upload_to_gcs(pdf_path, f"{self.request.id}.pdf")
