@@ -1,4 +1,3 @@
-
 /**
 Ex. 
 {
@@ -14,8 +13,7 @@ Ex.
   
  */
 export interface ResumeItemType {
-  id: number;
-  item_type: string;
+  id: number | string;
   title: string;
   organization: string;
   start_date: Date | null;
@@ -25,22 +23,36 @@ export interface ResumeItemType {
 }
 
 export interface ResumeSectionType {
-  id: string
+  id: number | string;
   name: string
-  type: 'education' | 'experience' | 'projects' | 'skills'
+  type: ResumeSectionItemType
   items: ResumeItemType[] // Array position = display order
 }
 
+export enum ResumeSectionItemType {
+  Education = "education",
+  Experience = "experience",
+  Projects = "project",
+  Skills = "skill",
+}
+
+export const ALL_SECTION_TYPES = [
+  ResumeSectionItemType.Education,
+  ResumeSectionItemType.Experience,
+  ResumeSectionItemType.Projects,
+  ResumeSectionItemType.Skills,
+]
+
 export interface ResumeType {
-  id: string
-  template: number
-  name: string
-  resume_name: string  // this is the name of the resume, not the user's name
+  id: number;
+  template_id: number
+  name: string // The title of the resume document, e.g. "Software Engineer Resume"
+  resume_name: string  // The person's name on the resume, e.g. "John Doe"
   phone: string
   email: string
   linkedin: string
   github: string
   website: string
   sections: ResumeSectionType[] // Array position = display order
-  updated_at: Date
+  updated_at: Date | string | null
 }

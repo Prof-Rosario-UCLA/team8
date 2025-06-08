@@ -7,7 +7,6 @@ export default function Home() {
     "Professional resume templates",
     "Real-time preview as you edit", 
     "Export to PDF",
-    "Multiple resume versions",
     "Clean, modern interface"
   ];
 
@@ -41,11 +40,11 @@ export default function Home() {
                   <ArrowRightIcon className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/resume/editor/demo">
+              {/* <Link href="/resume/editor/demo">
                 <Button variant="outline" size="lg">
                   View Demo
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>

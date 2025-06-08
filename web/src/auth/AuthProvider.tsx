@@ -3,7 +3,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 import { User } from '@/lib/types/User';
-import LoadingPage from '@/components/auth/Loading';
+import LoadingPage from '@/components/loading/Loading';
 
 interface AuthContextType {
   user: User | null;
@@ -32,12 +32,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .then(data => {
         console.log(`User data: ${JSON.stringify(data)}`);
         if (!data) {
-          // router.push(`/api/auth/login?next=${pathname}`);
+          router.push(`/api/auth/login?next=${pathname}`);
         } else {
           setUser(data);
         }
       }).catch(err => {
-        // router.push(`/api/auth/login?next=${pathname}`);
+        router.push(`/api/auth/login?next=${pathname}`);
       })
       .finally(() => {
         setChecked(true);

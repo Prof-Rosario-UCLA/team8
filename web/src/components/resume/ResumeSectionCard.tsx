@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import ResumeItemType from "@/lib/types/Resume";
+import { ResumeItemType } from "@/lib/types/Resume";
 import ResumeItemCard from "./ResumeItemCard";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,11 +18,14 @@ interface ResumeSectionProps {
   isLast?: boolean;
   
   // Item reordering callbacks
-  onMoveItemUp?: (itemId: number) => void;
-  onMoveItemDown?: (itemId: number) => void;
+  onMoveItemUp?: (itemId: number | string) => void;
+  onMoveItemDown?: (itemId: number | string) => void;
   
   // Add item callback
   onAddItem?: () => void;
+
+  // Update item callback
+  onUpdateItem?: (itemId: number | string, updates: Partial<ResumeItemType>) => void;
 }
 
 export default function ResumeSection({ 
@@ -36,7 +39,8 @@ export default function ResumeSection({
   isLast,
   onMoveItemUp,
   onMoveItemDown,
-  onAddItem
+  onAddItem,
+  onUpdateItem
 }: ResumeSectionProps) {
   
   // Professional spacing and padding
@@ -123,6 +127,7 @@ export default function ResumeSection({
             onMoveDown={onMoveItemDown ? () => onMoveItemDown(item.id) : undefined}
             isFirst={index === 0}
             isLast={index === resumeItems.length - 1}
+            onUpdate={(updates) => onUpdateItem && onUpdateItem(item.id, updates)}
           />
         ))}
       </CardContent>

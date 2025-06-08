@@ -3,9 +3,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import ResumeItemType from "@/lib/types/Resume"
-import { useState } from "react"
-import { useResumeItemSync } from "@/lib/hooks/resume/useResumeItemSync"
+import { ResumeItemType } from "@/lib/types/Resume"
 import { ResumeMonthYearField } from "../ui/datepicker"
 import LabelledInput from "../ui/LabelledInput"
 import { cn } from "@/lib/utils"
@@ -25,6 +23,7 @@ interface ResumeItemCardProps {
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
+  onUpdate: (updates: Partial<ResumeItemType>) => void;
 }
 
 export default function ResumeItemCard({ 
@@ -34,28 +33,12 @@ export default function ResumeItemCard({
   onMoveUp,
   onMoveDown,
   isFirst,
-  isLast
+  isLast,
+  onUpdate,
 }: ResumeItemCardProps) {
-  const [localItem, setLocalItem] = useState(resumeItem)
-  const { updateField } = useResumeItemSync(resumeItem.id)
 
   const handleFieldChange = (field: keyof ResumeItemType, value: string | Date | null) => {
-    // Convert Date to ISO string for start_date and end_date
-    let processedValue = value;
-    if ((field === "start_date" || field === "end_date") && value instanceof Date) {
-      processedValue = value.toISOString();
-    } else if (value === null && (field === "start_date" || field === "end_date")) {
-      processedValue = null; // Allow null to be passed if date is cleared
-    }
-
-    setLocalItem((prev) => ({ ...prev, [field]: processedValue }))
-
-    // TODO: Remove this, we don't need to update the field all the time, since we can just bulk update the resume on save
-    // if (field === "start_date" || field === "end_date") {
-    //   updateField(field, processedValue === null ? "" : String(processedValue))
-    // } else {
-    //   updateField(field, String(processedValue ?? ""))
-    // }
+    onUpdate({ [field]: value });
   }
 
   // Smart responsive breakpoints - use available space efficiently
@@ -133,7 +116,7 @@ export default function ResumeItemCard({
                 className="w-full"
                 input={
                   <Input
-                    value={localItem.title}
+                    value={resumeItem.title}
                     onChange={(e) => handleFieldChange("title", e.target.value)}
                     placeholder="Job Title"
                     className={cn(
@@ -155,7 +138,7 @@ export default function ResumeItemCard({
                   className="flex-1 min-w-0"
                   input={
                     <ResumeMonthYearField
-                      value={localItem.start_date ? new Date(localItem.start_date) : null}
+                      value={resumeItem.start_date ? new Date(resumeItem.start_date) : null}
                       onChange={(date) => handleFieldChange("start_date", date)}
                       compact={compact}
                       className="w-full"
@@ -167,7 +150,7 @@ export default function ResumeItemCard({
                   className="flex-1 min-w-0"
                   input={
                     <ResumeMonthYearField
-                      value={localItem.end_date ? new Date(localItem.end_date) : null}
+                      value={resumeItem.end_date ? new Date(resumeItem.end_date) : null}
                       onChange={(date) => handleFieldChange("end_date", date)}
                       compact={compact}
                       className="w-full"
@@ -187,7 +170,7 @@ export default function ResumeItemCard({
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  value={localItem.start_date ? new Date(localItem.start_date) : null}
+                  value={resumeItem.start_date ? new Date(resumeItem.start_date) : null}
                   onChange={(date) => handleFieldChange("start_date", date)}
                   compact={true}
                   className="w-full"
@@ -199,7 +182,7 @@ export default function ResumeItemCard({
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  value={localItem.end_date ? new Date(localItem.end_date) : null}
+                  value={resumeItem.end_date ? new Date(resumeItem.end_date) : null}
                   onChange={(date) => handleFieldChange("end_date", date)}
                   compact={true}
                   className="w-full"
@@ -216,7 +199,7 @@ export default function ResumeItemCard({
             className="flex-1 min-w-0"
             input={
               <Input
-                value={localItem.organization}
+                value={resumeItem.organization}
                 onChange={(e) => handleFieldChange("organization", e.target.value)}
                 placeholder="Company/Organization"
                 className={cn(
@@ -231,7 +214,7 @@ export default function ResumeItemCard({
             className="flex-1 min-w-0"
             input={
               <Input
-                value={localItem.location}
+                value={resumeItem.location}
                 onChange={(e) => handleFieldChange("location", e.target.value)}
                 placeholder="City, State"
                 className={cn(
@@ -249,7 +232,7 @@ export default function ResumeItemCard({
             label="Description" 
             input={
               <Textarea
-                value={localItem.description}
+                value={resumeItem.description}
                 onChange={(e) => handleFieldChange("description", e.target.value)}
                 placeholder="Describe your role and achievements..."
                 className={cn("w-full resize-y", layout.textarea)}

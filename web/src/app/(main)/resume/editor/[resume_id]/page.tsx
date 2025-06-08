@@ -4,7 +4,16 @@ import { useState, useEffect } from "react"
 import ResumeSection from "@/components/resume/ResumeSectionCard"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react"
-import { ResumeItemType, ResumeSectionType, ResumeType } from "@/lib/types/Resume"
+import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES } from "@/lib/types/Resume"
+import LoadingPage from "@/components/loading/Loading"
+import { parseDates } from "@/lib/utils/date"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
@@ -12,199 +21,121 @@ function useResumeEditor(resumeId: string) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
-  // Simulate loading resume data (replace with actual API call later)
   useEffect(() => {
+    if (!resumeId) {
+        setIsLoading(false);
+        return;
+    }
+
     const loadResume = async () => {
       setIsLoading(true)
-      
-      // Mock data with proper DateTime objects
-      const mockResume: ResumeType = {
-        id: resumeId,
-        template: 1,
-        name: "Jake Doe",
-        resume_name: "Jake's Resume",
-        phone: "(123) 456-7890",
-        email: "jake@example.com",
-        linkedin: "linkedin.com/in/jake",
-        github: "github.com/jake",
-        website: "https://www.example.com",
-        updated_at: new Date(),
-        sections: [
-          {
-            id: "education",
-            name: "Education",
-            type: "education",
-            items: [
-              {
-                id: 1,
-                item_type: "Education",
-                title: "Masters in Computer Science",
-                organization: "University of California, Los Angeles (UCLA)",
-                start_date: new Date("2024-09-01"),
-                end_date: null, // Present
-                location: "Los Angeles, CA",
-                description: "",
-              },
-              {
-                id: 2,
-                item_type: "Education", 
-                title: "Bachelor of Science in Computer Science",
-                organization: "University of California, Los Angeles (UCLA)",
-                start_date: new Date("2020-09-01"),
-                end_date: new Date("2024-06-01"),
-                location: "Los Angeles, CA",
-                description: "",
-              },
-            ]
-          },
-          {
-            id: "experience",
-            name: "Experience",
-            type: "experience",
-            items: [
-              {
-                id: 3,
-                item_type: "Experience",
-                title: "Software Engineer Intern",
-                organization: "Macrosoft",
-                start_date: new Date("2023-06-01"),
-                end_date: new Date("2023-09-01"),
-                location: "New York City, NY",
-                description: "Worked on the Macrodata Refinement Team.\nBuild data cleaning pipelines for data wrangling and cleaning used by data engineers within Macrosoft to serve cutting-edge healthcare technology customers.\nIncorporated Large-Language Models (LLMs) agents to help automate the data cleaning process using unsupervised machine learning.",
-              },
-              {
-                id: 4,
-                item_type: "Experience",
-                title: "Software Engineer Intern", 
-                organization: "Poogle",
-                start_date: new Date("2022-06-01"),
-                end_date: new Date("2022-09-01"),
-                location: "Sunnyvale, CA",
-                description: "Worked on the Poodle Petting Services Team.\nDeveloped a distributed poodle scheduling service able to store millions of data points on poodle petting for millions of customers at Poogle.\nImplemented distributed consensus in Go using the Paxos algorithm to maintain eventual consistency and availability.",
-              },
-              {
-                id: 5,
-                item_type: "Experience",
-                title: "Software Engineer Intern",
-                organization: "Bananazon", 
-                start_date: new Date("2021-06-01"),
-                end_date: new Date("2021-09-01"),
-                location: "Seattle, WA",
-                description: "Worked on the Cloud Banana Ingestion Team.\nDeveloped a full-stack web application for counting bananas.\nUsed big-data algorithms like MapReduce to scale banana counting 10x for thousands of Bananazon employees.",
-              },
-            ]
-          },
-          {
-            id: "projects",
-            name: "Projects", 
-            type: "projects",
-            items: [
-              {
-                id: 6,
-                item_type: "Project",
-                title: "Temporal Rollback Automation - Time Variance Authority (TVA)",
-                organization: "Club Project",
-                start_date: new Date("2023-01-01"),
-                end_date: new Date("2023-03-01"),
-                location: "Los Angeles, CA",
-                description: "Developed CI/CD pipeline for multiverse branch pruning using Loki-as-Code and Nexus Fluctuation Monitoring (NFM); reduced unauthorized timeline deployments by 87%.\nContainerized temporal rollback tools using ChronoDocker; ensured reproducibility across divergent realities and local pocket dimensions.\nImplemented real-time anomaly alerts via Slack-to-Timeline PagerDuty integration—successfully caught two Lokis, one Kang, and an unpaid intern before universe destabilization.",
-              },
-              {
-                id: 7,
-                item_type: "Project",
-                title: "The Matrix",
-                organization: "Club Project",
-                start_date: new Date("2022-01-01"),
-                end_date: new Date("2022-03-01"),
-                location: "Los Angeles, CA", 
-                description: "Designed and maintained immersive neural-interactive simulation for 99.9% of humanity; received consistently high user engagement despite complete lack of consent.\nLed team of Agents in real-time anomaly detection and reality-bending bug resolution, including high-priority escalations (e.g. \"The One\")\nIntroduced bullet-time rendering engine and kung fu auto-installation via direct brain upload, reducing training time by 100%.",
-              },
-              {
-                id: 8,
-                item_type: "Project",
-                title: "Death Star",
-                organization: "Class Project",
-                start_date: new Date("2021-01-01"),
-                end_date: new Date("2021-03-01"),
-                location: "Los Angeles, CA",
-                description: "Spearheaded cross-functional collaboration with Sith Lords, bounty hunters, and disgruntled contractors to deliver a planetary-scale laser weapon ahead of Empire fiscal year-end.\nImplemented robust access control systems (e.g., trench run) with intentional single-point-of-failure for testing Rebel threat response protocols\nReduced planet removal time by 99.99%, achieving galactic-scale disruption with minimal QA oversight",
-              },
-            ]
-          },
-          {
-            id: "skills",
-            name: "Technical Skills",
-            type: "skills",
-            items: [
-              {
-                id: 9,
-                item_type: "Skill",
-                title: "Languages",
-                organization: "",
-                start_date: null,
-                end_date: null,
-                location: "",
-                description: "Python, C++, JavaScript.",
-              },
-              {
-                id: 10,
-                item_type: "Skill",
-                title: "Frameworks",
-                organization: "",
-                start_date: null,
-                end_date: null,
-                location: "",
-                description: "Express.js, React.js, Flask.",
-              },
-              {
-                id: 11,
-                item_type: "Skill",
-                title: "Tools",
-                organization: "",
-                start_date: null,
-                end_date: null,
-                location: "",
-                description: "Git, Docker, VSCode.",
-              },
-            ]
-          }
-        ]
-      }
+      try {
+        const response = await fetch(`/api/resume/${resumeId}`) // Adjusted API endpoint
+        if (!response.ok) {
+            throw new Error(`Failed to fetch resume: ${response.statusText}`);
+        }
+        const data = await response.json()
+        console.log('Resume data received:', data)
 
-      // No need to sort - array position IS the order
-      setResume(mockResume)
-      setIsLoading(false)
+        // Recursively parse date strings into Date objects
+        const resumeDataWithDates: ResumeType = parseDates(data)
+        
+        setResume(resumeDataWithDates)
+      } catch (error) {
+        console.error("Error loading resume:", error);
+        // Handle error state in UI, e.g., show a notification
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     loadResume()
   }, [resumeId])
 
-  // Future: Functions for CRUD operations and reordering
-  const updateResumeItem = (sectionId: string, itemId: number, updates: Partial<ResumeItemType>) => {
-    if (!resume) return
+  const addSection = (sectionType: ResumeSectionItemType) => {
+    if (!resume) return;
+
+    // Capitalize first letter for display name
+    const name = sectionType.charAt(0).toUpperCase() + sectionType.slice(1);
+
+    const newSection: ResumeSectionType = {
+        id: crypto.randomUUID(), // Temporary client-side ID
+        name: name,
+        type: sectionType,
+        items: [],
+    };
 
     setResume(prev => {
-      if (!prev) return null
-      
+        if (!prev) return null;
+        return {
+            ...prev,
+            sections: [...prev.sections, newSection],
+            updated_at: new Date(),
+        };
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const addItemToSection = (sectionId: string | number) => {
+    if (!resume) return;
+
+    const section = resume.sections.find(s => s.id === sectionId);
+    if (!section) {
+      console.error("Section not found for adding item");
+      return;
+    }
+
+    const newId = crypto.randomUUID();
+    const newItem: ResumeItemType = {
+        id: newId,
+        title: "New Role",
+        organization: "New Company",
+        start_date: new Date(),
+        end_date: null,
+        location: "City, State",
+        description: "",
+    };
+
+    setResume(prev => {
+        if (!prev) return null;
+        return {
+            ...prev,
+            sections: prev.sections.map(s =>
+                s.id === sectionId
+                    ? { ...s, items: [...s.items, newItem] }
+                    : s
+            ),
+            updated_at: new Date(),
+        };
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const updateResumeItem = (sectionId: string | number, itemId: string | number, updates: Partial<ResumeItemType>) => {
+    if (!resume) return;
+
+    setResume(prev => {
+      if (!prev) return null;
+
       return {
         ...prev,
-        sections: prev.sections.map(section => 
-          section.id === sectionId 
+        sections: prev.sections.map(section =>
+          section.id === sectionId
             ? {
                 ...section,
                 items: section.items.map(item =>
                   item.id === itemId ? { ...item, ...updates } : item
-                )
+                ),
               }
             : section
         ),
-        updated_at: new Date()
-      }
-    })
-    setHasUnsavedChanges(true)
+        updated_at: new Date(),
+      };
+    });
+    setHasUnsavedChanges(true);
   }
 
-  const reorderSection = (sectionId: string, direction: 'up' | 'down') => {
+  const reorderSection = (sectionId: string | number, direction: 'up' | 'down') => {
     if (!resume) return
 
     setResume(prev => {
@@ -237,7 +168,7 @@ function useResumeEditor(resumeId: string) {
     setHasUnsavedChanges(true)
   }
 
-  const reorderItem = (sectionId: string, itemId: number, direction: 'up' | 'down') => {
+  const reorderItem = (sectionId: string | number, itemId: string | number, direction: 'up' | 'down') => {
     if (!resume) return
     
     setResume(prev => {
@@ -286,25 +217,48 @@ function useResumeEditor(resumeId: string) {
   const saveResume = async () => {
     if (!resume) return
     
-    // TODO 
+    // Create a deep copy to modify for the payload without affecting local state
+    const payload = JSON.parse(JSON.stringify(resume));
 
-    const response = await fetch(`/api/views/resume/update/${resume.id}`, {
+    // Replace temporary string IDs with null for the backend
+    payload.sections.forEach((section: any) => {
+      if (typeof section.id === 'string') {
+        section.id = null;
+      }
+      section.items.forEach((item: any) => {
+        if (typeof item.id === 'string') {
+          item.id = null;
+        }
+      });
+    });
+    
+    const response = await fetch(`/api/resume/update/${resume.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(resume),
+      body: JSON.stringify(payload),
     })
     if (!response.ok) {
       console.error('Failed to save resume:', response.statusText)
+      // Optionally, show an error message to the user
       return
     }
-    const data = await response.json()
-    console.log('Resume saved:', data)
 
-    console.log('Saving resume:', resume)
+    // On success, backend returns the full, updated resume object with new IDs.
+    const data = await response.json()
+    console.log('Resume saved, server response:', data)
+
+    // Update the local state with the server's version of the resume
+    const resumeDataWithDates: ResumeType = parseDates(data)
+    setResume(resumeDataWithDates);
+
     setHasUnsavedChanges(false)
   }
+
+  const availableSectionTypes = resume 
+    ? ALL_SECTION_TYPES.filter(type => !resume.sections.some(s => s.type === type))
+    : []
 
   return {
     resume,
@@ -313,7 +267,10 @@ function useResumeEditor(resumeId: string) {
     updateResumeItem,
     reorderSection,
     reorderItem,
-    saveResume
+    saveResume,
+    addSection,
+    addItemToSection,
+    availableSectionTypes,
   }
 }
 
@@ -328,32 +285,27 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
   if (!resolvedParams || resumeEditor.isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading resume editor...</p>
-        </div>
-      </div>
+      <LoadingPage message="Loading resume editor..." />  
     )
   }
 
   if (!resumeEditor.resume) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
+        <section className="text-center">
           <p className="text-gray-600">Resume not found</p>
-        </div>
+        </section>
       </div>
     )
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem } = resumeEditor
+  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem } = resumeEditor
 
   // Split view: editor on left, preview on right
   const leftPanel = (
-    <div className="w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
+    <section className="w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
       {/* Editor Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+      <section className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">{resume.resume_name}</h1>
@@ -377,10 +329,10 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             You have unsaved changes
           </div>
         )}
-      </div>
+      </section>
 
       {/* Resume Sections */}
-      <div className="p-4 space-y-4">
+      <section className="p-4 space-y-4">
         {resume.sections.map((section, sectionIndex) => (
           <ResumeSection 
             key={section.id}
@@ -394,22 +346,44 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             isLast={sectionIndex === resume.sections.length - 1}
             onMoveItemUp={(itemId) => reorderItem(section.id, itemId, 'up')}
             onMoveItemDown={(itemId) => reorderItem(section.id, itemId, 'down')}
-            onAddItem={() => console.log('Add item to section', section.id)}
+            onAddItem={() => addItemToSection(section.id)}
+            onUpdateItem={(itemId, updates) => updateResumeItem(section.id, itemId, updates)}
           />
         ))}
         
-        {/* Future: Add Section Button */}
-        <Button variant="outline" className="w-full flex items-center gap-2 border-dashed">
-          <PlusIcon className="h-4 w-4" />
-          Add Section
-        </Button>
-      </div>
-    </div>
+        {/* Add Section Dropdown Button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center gap-2 border-dashed"
+              disabled={availableSectionTypes.length === 0}
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Section
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-full">
+            {availableSectionTypes.map(type => (
+              <DropdownMenuItem key={type} onClick={() => addSection(type)}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {availableSectionTypes.length === 0 && (
+          <p className="text-xs text-center text-gray-500 mt-2">
+            All section types have been added.
+          </p>
+        )}
+      </section>
+    </section>
   )
 
   // Right panel WILL be an iframe of the latex resume pdf, currently just placeholder html elements
   const rightPanel = (
-    <div className="w-1/2 bg-white overflow-auto">
+    <section className="w-1/2 bg-white overflow-auto">
       {/* Preview Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center gap-2">
@@ -464,7 +438,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
           ))}
         </div>
       </div>
-    </div>
+    </section>
   )
 
   return (

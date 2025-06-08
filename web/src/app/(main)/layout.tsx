@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/auth/AuthProvider';
 import Navbar from '@/components/navbar/Navbar';
-import LoadingPage from '@/components/auth/Loading';
+import LoadingPage from '@/components/loading/Loading';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
