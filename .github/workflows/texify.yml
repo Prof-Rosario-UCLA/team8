@@ -1,4 +1,4 @@
-name: Texify CI
+name: Texify CI/CD
 
 on:
   push:

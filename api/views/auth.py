@@ -110,7 +110,9 @@ def login():
         base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
     # TODO(bliutech): add some more checks here to prevent open redirect
     if request.headers.get("Referer"):
-        base_url = "http://" + request.headers.get("Referer") + request.path
+        base_url = (
+            os.environ.get("CLIENT_ORIGIN", "http://localhost:3000") + request.path
+        )
     current_app.logger.debug(base_url)
     current_app.logger.debug(request.headers)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
@@ -118,6 +120,7 @@ def login():
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         base_url = base_url.replace("http://", "https://")
         base_url = base_url.replace("api-dot-prolio-resume", "prolio-resume")
+    current_app.logger.debug(base_url)
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=base_url + "/callback",
@@ -139,14 +142,18 @@ def callback():
     token_endpoint = google_provider_cfg["token_endpoint"]
 
     AUTHORIZATION_URL = request.url
+    current_app.logger.debug("AUTHORIZATION_URL " + AUTHORIZATION_URL)
     REDIRECT_URL = request.base_url
+    current_app.logger.debug("REDIRECT_URL " + REDIRECT_URL)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
     current_app.logger.debug(request.base_url)
     if request.headers.get("X-Forwarded-Host"):
-        REDIRECT_URL = request.headers.get("X-Forwarded-Host")
-        AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
+        REDIRECT_URL = "http://" + request.headers.get("X-Forwarded-Host")
+        # AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
     if request.headers.get("Referer"):
-        REDIRECT_URL = request.headers.get("Referer")
+        REDIRECT_URL = (
+            os.environ.get("CLIENT_ORIGIN", "http://localhost:3000") + request.path
+        )
         AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
 
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
@@ -162,6 +169,9 @@ def callback():
         redirect_url=REDIRECT_URL,
         code=code,
     )
+    current_app.logger.debug(token_url)
+    current_app.logger.debug(headers)
+    current_app.logger.debug(body)
     token_response = requests.post(
         token_url,
         headers=headers,
