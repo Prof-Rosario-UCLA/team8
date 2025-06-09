@@ -16,7 +16,6 @@ RUN python3 -m pip install --no-cache-dir -r /app/requirements.txt
 
 USER app
 
-# TODO(bliutech): look into whether we can take advantage of Docker layer caching here
 COPY --chown=app:app . /app/
 
 EXPOSE 8080
