@@ -13,19 +13,12 @@ from models.template import Template
 
 from db import db
 
-
 class Resume(db.Model, Base):
     __tablename__ = "resumes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey(User.id, ondelete="CASCADE"))
-    name: Mapped[str] = mapped_column(nullable=False)
     resume_name: Mapped[str | None] = mapped_column(nullable=False)
-    phone: Mapped[str | None] = mapped_column(nullable=True)
-    email: Mapped[str | None] = mapped_column(nullable=True)
-    linkedin: Mapped[str | None] = mapped_column(nullable=True)
-    github: Mapped[str | None] = mapped_column(nullable=True)
-    website: Mapped[str | None] = mapped_column(nullable=True)
     template_id = mapped_column(ForeignKey(Template.id), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -40,6 +33,8 @@ class Resume(db.Model, Base):
         cascade="all, delete-orphan",
     )
 
+    user: Mapped["User"] = relationship(back_populates="resumes")
+
     @override
     def json(self):
         return {
@@ -48,16 +43,14 @@ class Resume(db.Model, Base):
             "template_id": self.template_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "name": self.name,
+            "name": self.user.name,
             "resume_name": self.resume_name or "Untitled Resume",
-            "phone": self.phone,
-            "email": self.email,
-            "linkedin": self.linkedin,
-            "github": self.github,
-            "website": self.website,
-            "sections": [
-                sec.json() for sec in self.sections
-            ],  # TODO: sort by display order and return list
+            "phone": self.user.phone,
+            "email": self.user.email,
+            "linkedin": self.user.linkedin,
+            "github": self.user.github,
+            "website": self.user.website,
+            "sections": [sec.json() for sec in self.sections],  # TODO: sort by display order and return list
         }
 
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import select, and_
 
+from models.user import User
 from models.resume import Resume, ResumeSection, ResumeItem
 from models.template import Template
 from flask_login import login_required, current_user
@@ -34,7 +35,8 @@ def get_resume(id: int):
     Return a resume belonging to the current user
     with a given resume id, using the controller to fetch it.
     """
-    resume = get_full_resume(id, current_user.id, db.session)
+    assert isinstance(current_user, User)
+    resume = get_full_resume(id, current_user, db.session)
     if resume:
         return resume.json()
     return jsonify({"error": "Resume not found"}), 404
@@ -58,8 +60,8 @@ def create_resume():
 
     # Generate a unique default name for the resume (e.g., "Untitled Resume (2)").
     base_name = "Untitled Resume"
-    existing_names_stmt = select(Resume.name).where(
-        Resume.user_id == current_user.id, Resume.name.like(f"{base_name}%")
+    existing_names_stmt = select(Resume.resume_name).where(
+        Resume.user_id == current_user.id, Resume.resume_name.like(f"{base_name}%")
     )
     existing_names = db.session.execute(existing_names_stmt).scalars().all()
 
@@ -72,19 +74,15 @@ def create_resume():
     # Create the new resume object with the default values.
     res = Resume()
     res.user_id = current_user.id
-    res.name = new_name
-
-    res.resume_name = "Untitled Resume"
+    res.resume_name = new_name
     res.template_id = default_template.id
-    # Other fields (phone, email, etc.) will be null by default, though we could
-    # also default the resume's 'email' field to current_user.email here.
-    res.email = current_user.email
 
     res.save_to_db()
     db.session.flush()  # Ensure the new ID is available for get_full_resume
 
     # Fetch the full resume object to return to the frontend.
-    new_resume = get_full_resume(res.id, current_user.id, db.session)
+    assert isinstance(current_user, User)
+    new_resume = get_full_resume(res.id, current_user, db.session)
 
     # Return the new resume object with a 201 Created status code.
     if new_resume:
@@ -101,18 +99,20 @@ def update_resume(id: int):
     if not data or type(data) is not dict:
         return jsonify({"error": "Missing required data"}), 400
 
-    resume_to_update = get_full_resume(id, current_user.id, db.session)
+    assert isinstance(current_user, User)
+    resume_to_update = get_full_resume(id, current_user, db.session)
 
     if not resume_to_update:
         return jsonify({"error": "Resume not found or access denied"}), 404
 
     try:
-        process_resume_update(resume_to_update, data, current_user.id, db.session)
+        process_resume_update(resume_to_update, data, db.session)
 
         db.session.commit()
 
         # Re-fetch the entire resume to get the latest state with new IDs
-        updated_resume = get_full_resume(id, current_user.id, db.session)
+        assert isinstance(current_user, User)
+        updated_resume = get_full_resume(id, current_user, db.session)
 
         if not updated_resume:
             # This would be unusual, but handle it
@@ -326,7 +326,6 @@ def create_resume_item():
 
     new_item = ResumeItem()
     new_item.user_id = current_user.id
-    new_item.item_type = data["item_type"]
     new_item.title = data["title"]
     new_item.organization = data["organization"]
     new_item.start_date = data["start_date"]
@@ -358,8 +357,6 @@ def update_resume_item(id: int):
     if not item:
         return {"error": "Resume item not found."}, 404
 
-    if "item_type" in data:
-        item.item_type = data["item_type"]
     if "title" in data:
         item.title = data["title"]
     if "organization" in data:

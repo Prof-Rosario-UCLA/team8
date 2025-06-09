@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from models.resume import Resume, ResumeSection, ResumeItem, ResumeItemType
+from models.user import User
 
 from datetime import datetime, timezone
 
@@ -200,23 +201,28 @@ def _update_section_items(
     section_db.items = updated_items_collection
 
 
-def process_resume_update(resume_db: Resume, payload: dict, user_id: int, db_session):
+def process_resume_update(resume_db: Resume, payload: dict, db_session):
     """
     Main controller function to process updates to a resume, including its sections and items.
+    Updates are delegated to the user or resume object as appropriate.
     """
-    # Update Resume scalar fields
-    resume_db.name = payload.get("name", resume_db.name)
+    # Update User fields via the relationship
+    user_to_update = resume_db.user
+    user_to_update.name = payload.get("name", user_to_update.name)
+    user_to_update.phone = payload.get("phone", user_to_update.phone)
+    user_to_update.email = payload.get("email", user_to_update.email)
+    user_to_update.linkedin = payload.get("linkedin", user_to_update.linkedin)
+    user_to_update.github = payload.get("github", user_to_update.github)
+    user_to_update.website = payload.get("website", user_to_update.website)
+
+    # Update Resume-specific fields
     resume_db.resume_name = payload.get("resume_name", resume_db.resume_name)
-    resume_db.phone = payload.get("phone", resume_db.phone)
-    resume_db.email = payload.get("email", resume_db.email)
-    resume_db.linkedin = payload.get("linkedin", resume_db.linkedin)
-    resume_db.github = payload.get("github", resume_db.github)
-    resume_db.website = payload.get("website", resume_db.website)
     if "template_id" in payload:
         resume_db.template_id = payload["template_id"]
 
     # Process Sections
     sections_payload = payload.get("sections", [])
+    user_id = user_to_update.id # Keep user_id for nested calls for simplicity
 
     # Get current sections from DB for this resume to find orphans later
     current_db_sections_stmt = select(ResumeSection.id).where(
@@ -268,14 +274,14 @@ def process_resume_update(resume_db: Resume, payload: dict, user_id: int, db_ses
     return resume_db
 
 
-def get_full_resume(resume_id: int, user_id: int, db_session) -> Resume | None:
+def get_full_resume(resume_id: int, user: User, db_session) -> Resume | None:
     """
     Fetches a single resume with all its sections and items eagerly loaded.
-    Ensures the resume belongs to the specified user.
+    Ensures the resume belongs to the specified user by checking the relationship.
     """
     stmt = (
         select(Resume)
-        .where(Resume.id == resume_id, Resume.user_id == user_id)
+        .where(Resume.id == resume_id, Resume.user == user)
         .options(selectinload(Resume.sections).selectinload(ResumeSection.items))
     )
     return db_session.execute(stmt).scalar_one_or_none()
