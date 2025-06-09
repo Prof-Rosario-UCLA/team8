@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for
+from flask import Blueprint, request, redirect, url_for, current_app
 from flask_login import current_user, login_user, login_required, logout_user
 
 import os
@@ -104,12 +104,16 @@ def login():
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
     base_url = (
-        ("http://" if os.environ.get("GOOGLE_DISCOVERY_URL") else "https://")
+        "http://"
         + request.headers.get("X-Forwarded-Host")
         + request.path
         if request.headers.get("X-Forwarded-Host")
         else request.base_url
     )
+    current_app.logger.info(base_url)
+    current_app.logger.info(request.headers.get("X-Forwarded-Host"))
+    if not os.environ.get("GOOGLE_DISCOVERY_URL"):
+        base_url = base_url.replace("http://", "https://")
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=base_url + "/callback",
@@ -129,11 +133,20 @@ def callback():
     google_provider_cfg = get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
+    AUTHORIZATION_URL=request.url
+    REDIRECT_URL=request.base_url
+
+    if not os.environ.get("GOOGLE_DISCOVERY_URL"):
+        AUTHORIZATION_URL = AUTHORIZATION_URL.replace("http://", "https://")
+        REDIRECT_URL = REDIRECT_URL.replace("http://", "https://")
+
+    current_app.logger.info("AUTHORIZATION_URL", AUTHORIZATION_URL)
+    current_app.logger.info("REDIRECT_URL", REDIRECT_URL)
     # Prepare and send a request to get tokens! Yay tokens!
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
-        authorization_response=request.url,
-        redirect_url=request.base_url,
+        authorization_response=AUTHORIZATION_URL,
+        redirect_url=REDIRECT_URL,
         code=code,
     )
     token_response = requests.post(
@@ -144,7 +157,9 @@ def callback():
     )
 
     # Parse the tokens!
-    client.parse_request_body_response(json.dumps(token_response.json()))
+    res = json.dumps(token_response.json())
+    current_app.logger.info(res)
+    client.parse_request_body_response(res)
 
     # Now that you have tokens (yay) let's find and hit the URL
     # from Google that gives you the user's profile information,
@@ -152,11 +167,13 @@ def callback():
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
     uri, headers, body = client.add_token(userinfo_endpoint)
     userinfo_response = requests.get(uri, headers=headers, data=body)
+    res = userinfo_response.json()
+    current_app.logger.info(res)
 
     # You want to make sure their email is verified.
     # The user authenticated with Google, authorized your
     # app, and now you've verified their email through Google!
-    if userinfo_response.json().get("email_verified"):
+    if res.get("email_verified"):
         unique_id = userinfo_response.json()["sub"]
         users_email = userinfo_response.json()["email"]
         picture = userinfo_response.json()["picture"]
