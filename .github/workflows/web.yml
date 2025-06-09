@@ -13,8 +13,8 @@ on:
       - 'web/**'
 
 jobs:
-  lint-and-build:
-    name: Lint and Build Web
+  ci:
+    name: Web CI
     runs-on: ubuntu-latest
 
     steps:
@@ -38,3 +38,25 @@ jobs:
       - name: Build Next.js app
         working-directory: web
         run: npm run build
+  cd:
+    name: Web CD
+    runs-on: ubuntu-latest
+    needs: ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run prepare.sh
+        run: bash ./prepare.sh
+
+      # - name: Set up Google Cloud CLI
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      # - name: Run Cloud Build for Web
+      #   run: |
+      #     gcloud builds submit web/ --config=web/cloudbuild.yaml --project=$PROJECT_ID
+      #   env:
+      #     PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

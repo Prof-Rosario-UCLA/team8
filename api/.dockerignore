@@ -6,3 +6,5 @@ Dockerfile
 .dockerignore
 app.yaml
 app.template.yaml
+cloudbuild.yaml
+cloudbuild.template.yaml

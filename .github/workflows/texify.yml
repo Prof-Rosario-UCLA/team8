@@ -13,8 +13,8 @@ on:
       - 'texify/**'
 
 jobs:
-  lint:
-    name: Lint Texify with Ruff
+  ci:
+    name: Texify CI
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +31,25 @@ jobs:
 
       - name: Run Ruff on texify/
         run: ruff format --check texify/
+  cd:
+    name: Texify CD
+    runs-on: ubuntu-latest
+    needs: ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run prepare.sh
+        run: bash ./prepare.sh
+
+      # - name: Set up Google Cloud CLI
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      # - name: Run Cloud Build for Texify
+      #   run: |
+      #     gcloud builds submit texify/ --config=texify/cloudbuild.yaml --project=$PROJECT_ID
+      #   env:
+      #     PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
