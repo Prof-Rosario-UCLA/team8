@@ -62,6 +62,8 @@ export default function ResumeSection({
 
   const layout = getLayoutClasses()
 
+  const isSkill = title.toLowerCase() === "skill"
+
   return (
     <Card className={cn("w-full shadow-sm border-gray-200", className)}>
       <CardHeader className={layout.header}>
@@ -128,6 +130,7 @@ export default function ResumeSection({
             isFirst={index === 0}
             isLast={index === resumeItems.length - 1}
             onUpdate={(updates) => onUpdateItem && onUpdateItem(item.id, updates)}
+            isSkill={isSkill}
           />
         ))}
       </CardContent>

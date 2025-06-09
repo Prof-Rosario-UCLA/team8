@@ -14,6 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
+import ResumeTOC from "@/components/resume/ResumeTOC"
+import { DragEndEvent } from "@dnd-kit/core"
+import { arrayMove } from "@dnd-kit/sortable"
+import UserInfoCard from "@/components/resume/UserInfoCard"
 
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
@@ -214,6 +218,63 @@ function useResumeEditor(resumeId: string) {
     setHasUnsavedChanges(true)
   }
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id && over) {
+        setResume((prev) => {
+            if (!prev) return null;
+
+            const activeId = active.id as string;
+            const overId = over.id as string;
+
+            const [activeSectionId, activeItemId] = activeId.split('::');
+            const [overSectionId, overItemId] = overId.split('::');
+
+            // For now, only allow reordering within the same section
+            if (activeSectionId !== overSectionId) {
+                return prev;
+            }
+
+            const sectionIndex = prev.sections.findIndex(s => s.id.toString() === activeSectionId);
+            if (sectionIndex === -1) return prev;
+            
+            const section = prev.sections[sectionIndex];
+            const oldIndex = section.items.findIndex(i => i.id.toString() === activeItemId);
+            const newIndex = section.items.findIndex(i => i.id.toString() === overItemId);
+
+            if (oldIndex === -1 || newIndex === -1) return prev;
+
+            const newItems = arrayMove(section.items, oldIndex, newIndex);
+
+            const newSections = [...prev.sections];
+            newSections[sectionIndex] = {
+                ...section,
+                items: newItems,
+            };
+
+            return {
+                ...prev,
+                sections: newSections,
+                updated_at: new Date(),
+            };
+        });
+        setHasUnsavedChanges(true);
+    }
+  };
+
+  const updateUserInfo = (updates: Partial<ResumeType>) => {
+    setResume(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        ...updates,
+        updated_at: new Date(),
+      };
+    });
+    setHasUnsavedChanges(true);
+  };
+
   const saveResume = async () => {
     if (!resume) return
     
@@ -269,6 +330,8 @@ function useResumeEditor(resumeId: string) {
     addSection,
     addItemToSection,
     availableSectionTypes,
+    handleDragEnd,
+    updateUserInfo,
   }
 }
 
@@ -289,7 +352,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
   if (!resumeEditor.resume) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center flex-1 h-full">
         <section className="text-center">
           <p className="text-gray-600">Resume not found</p>
         </section>
@@ -297,13 +360,13 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     )
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem } = resumeEditor
+  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo } = resumeEditor
 
   // Split view: editor on left, preview on right
   const leftPanel = (
     <section className="w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
       {/* Editor Header */}
-      <section className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+      <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">{resume.resume_name}</h1>
@@ -327,10 +390,15 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             You have unsaved changes
           </div>
         )}
-      </section>
+      </header>
 
-      {/* Resume Sections */}
-      <section className="p-4 space-y-4">
+      {/* User Info and Resume Sections */}
+      <div className="p-4 space-y-4">
+        <UserInfoCard 
+            userInfo={resume}
+            onUpdate={updateUserInfo}
+            className="bg-white shadow-sm"
+        />
         {resume.sections.map((section, sectionIndex) => (
           <ResumeSection 
             key={section.id}
@@ -375,7 +443,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             All section types have been added.
           </p>
         )}
-      </section>
+      </div>
     </section>
   )
 
@@ -383,12 +451,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
   const rightPanel = (
     <section className="w-1/2 bg-white overflow-auto">
       {/* Preview Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+      <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center gap-2">
           <EyeIcon className="h-5 w-5 text-gray-600" />
           <h2 className="text-lg font-medium text-gray-900">Resume Preview</h2>
         </div>
-      </div>
+      </header>
 
       {/* Preview Content - Future: Replace with actual resume template */}
       <div className="p-6">
@@ -440,9 +508,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
   )
 
   return (
-    <div className="h-screen flex">
-      {leftPanel}
-      {rightPanel}
-    </div>
+    <section className="flex h-full">
+      <ResumeTOC resume={resume} handleDragEnd={handleDragEnd} />
+      <div className="flex-1 flex">
+        {leftPanel}
+        {rightPanel}
+      </div>
+    </section>
   )
 } 

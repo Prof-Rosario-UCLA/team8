@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
 
-export default function LabelledInput({ label, input, className }: { label: string, input: React.ReactNode, className?: string }) {
+export default function LabelledInput({ label, input, className, htmlFor }: { label: string, input: React.ReactNode, className?: string, htmlFor?: string }) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <label className="text-sm text-muted-foreground">{label}</label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {input}
     </div>
   )

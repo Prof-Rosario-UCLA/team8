@@ -31,7 +31,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <AuthProvider>
-        {children}
+          {children}
         </AuthProvider>
       </body>
     </html>

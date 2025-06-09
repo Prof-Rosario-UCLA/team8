@@ -7,15 +7,12 @@ import LoadingPage from '@/components/loading/Loading';
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
 
-  if (!auth || !auth.user) {
-    console.log("Loading page. Auth state:", auth, "User:", auth ? auth.user : 'No user object');
-    return <LoadingPage />;
-  }
-
   return (
-    <>
+    <div className="flex flex-col h-screen">
       <Navbar />
-      {children}
-    </>
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
   );
 }

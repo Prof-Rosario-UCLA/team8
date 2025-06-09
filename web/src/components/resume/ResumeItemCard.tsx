@@ -18,6 +18,7 @@ interface ResumeItemCardProps {
   isFirst?: boolean;
   isLast?: boolean;
   onUpdate: (updates: Partial<ResumeItemType>) => void;
+  isSkill?: boolean;
 }
 
 export default function ResumeItemCard({ 
@@ -29,6 +30,7 @@ export default function ResumeItemCard({
   isFirst,
   isLast,
   onUpdate,
+  isSkill = false,
 }: ResumeItemCardProps) {
 
   const handleFieldChange = (field: keyof ResumeItemType, value: string | Date | null) => {
@@ -63,6 +65,8 @@ export default function ResumeItemCard({
   }
 
   const layout = getLayoutClasses()
+
+  console.log("From ResumeItemCard", isSkill)
 
   return (
     <Card className={cn(layout.container, "w-full border border-gray-200", className)}>
@@ -107,9 +111,11 @@ export default function ResumeItemCard({
               
               <LabelledInput 
                 label="Title" 
+                htmlFor={`title-${resumeItem.id}`}
                 className="w-full"
                 input={
                   <Input
+                    id={`title-${resumeItem.id}`}
                     value={resumeItem.title}
                     onChange={(e) => handleFieldChange("title", e.target.value)}
                     placeholder="Job Title"
@@ -156,14 +162,18 @@ export default function ResumeItemCard({
           )}
         </div>
 
+
+        {!isSkill && <>
         {/* Dates for compact mode */}
         {compact && (
           <div className={layout.dateRow}>
             <LabelledInput 
               label="Start Date" 
+              htmlFor={`start_date-compact-${resumeItem.id}`}
               className="flex-1"
               input={
                 <ResumeMonthYearField
+                  id={`start_date-compact-${resumeItem.id}`}
                   value={resumeItem.start_date}
                   onChange={(date) => handleFieldChange("start_date", date)}
                   compact={true}
@@ -173,9 +183,11 @@ export default function ResumeItemCard({
             />
             <LabelledInput 
               label="End Date" 
+              htmlFor={`end_date-compact-${resumeItem.id}`}
               className="flex-1"
               input={
                 <ResumeMonthYearField
+                  id={`end_date-compact-${resumeItem.id}`}
                   value={resumeItem.end_date}
                   onChange={(date) => handleFieldChange("end_date", date)}
                   compact={true}
@@ -190,9 +202,11 @@ export default function ResumeItemCard({
         <div className={layout.orgRow}>
           <LabelledInput 
             label="Organization" 
+            htmlFor={`organization-${resumeItem.id}`}
             className="flex-1 min-w-0"
             input={
               <Input
+                id={`organization-${resumeItem.id}`}
                 value={resumeItem.organization}
                 onChange={(e) => handleFieldChange("organization", e.target.value)}
                 placeholder="Company/Organization"
@@ -205,9 +219,11 @@ export default function ResumeItemCard({
           />
           <LabelledInput 
             label="Location" 
+            htmlFor={`location-${resumeItem.id}`}
             className="flex-1 min-w-0"
             input={
               <Input
+                id={`location-${resumeItem.id}`}
                 value={resumeItem.location}
                 onChange={(e) => handleFieldChange("location", e.target.value)}
                 placeholder="City, State"
@@ -219,16 +235,19 @@ export default function ResumeItemCard({
             }
           />
         </div>
-        
+        </>}
+
         {/* Description - Full Width */}
         <div className="w-full">
           <LabelledInput 
             label="Description" 
+            htmlFor={`description-${resumeItem.id}`}
             input={
               <Textarea
+                id={`description-${resumeItem.id}`}
                 value={resumeItem.description}
                 onChange={(e) => handleFieldChange("description", e.target.value)}
-                placeholder="Describe your role and achievements..."
+                placeholder={isSkill ? "Describe your skills... (Comma separated)" : "Describe your role and achievements..."}
                 className={cn("w-full resize-y", layout.textarea)}
               />
             }
