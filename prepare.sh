@@ -2,15 +2,17 @@
 
 set -e
 
-if [[ $BUILD_MODE != "CD" ]]; then
-    # Load environment variables from .env in development
-    export $(cat .env | xargs);
-else
-    # Environment variables should already be loaded in GitHub Actions
-    # TODO(bliutech): generate gcs-access-key.json
-    echo "TODO"
+# Load environment variables from .env in development
+if [[ ! -f ".env" ]]; then
+    echo "Missing texify/gcs-access-key.json";
+    exit 1;
 fi
 
+export $(cat .env | xargs);
+
+# TODO(bliutech): refactor some of the logic to make the updates only apply for
+# one service so that we do not need gcs-access-key.json for every CD workflow.
+# Make sure that GCS access key is generated
 if [[ ! -f "texify/gcs-access-key.json" ]]; then
     echo "Missing texify/gcs-access-key.json";
     exit 1;
@@ -38,5 +40,4 @@ for SERVICE in "${SERVICES[@]}"; do
     fi
 done
 
-# Run Cloud Build
-# gcloud builds submit --config=cloudbuild.yaml .;
+echo "Deployment configuration files generated!"

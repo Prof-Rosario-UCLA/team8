@@ -49,17 +49,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Generate .env
+        run: echo "${{ secrets.WEB_ENV_FILE }}" > .env
+      
+      - name: Generate gcs-access-key.json
+        run: echo '${{ secrets.GCP_SA_KEY }}' > texify/gcs-access-key.json
 
       - name: Run prepare.sh
-        run: BUILD_MODE=CD bash ./prepare.sh
+        run: bash ./prepare.sh
 
-      # - name: Set up Google Cloud CLI
-      #   uses: google-github-actions/auth@v2
-      #   with:
-      #     credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # - name: Run Cloud Build for Web
-      #   run: |
-      #     gcloud builds submit web/ --config=web/cloudbuild.yaml --project=$PROJECT_ID
-      #   env:
-      #     PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Run Cloud Build for Web
+        run: |
+          gcloud builds submit web/ --config=web/cloudbuild.yaml --project=$PROJECT_ID
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
