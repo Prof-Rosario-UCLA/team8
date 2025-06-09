@@ -1,15 +1,11 @@
 from flask import Blueprint
 
-from flask_login import login_required, current_user
+from flask_login import login_required
 
-from sqlalchemy import select, and_, func, delete
-
-from models.resume import Resume, ResumeSection, ResumeItem, ResumeAssociation
 
 from controllers.resume import get_full_resume
 from controllers.template import get_template
 
-from db import db
 
 import requests
 

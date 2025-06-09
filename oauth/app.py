@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request, redirect
+from flask import Flask, request, redirect
 import logging
 
 app = Flask(__name__)

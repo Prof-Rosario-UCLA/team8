@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 
 from flask_login import login_required
 
@@ -71,4 +71,4 @@ def handle_delete_template(id: int):
     if not deleted:
         return {"error": "Template not found"}, 404
 
-    return {"message": f"Template deleted"}
+    return {"message": "Template deleted"}

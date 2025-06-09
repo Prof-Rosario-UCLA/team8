@@ -1,0 +1,33 @@
+name: Lint Flask API
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+
+jobs:
+  lint:
+    name: Lint API with Ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff on api/
+        run: ruff format --check api/

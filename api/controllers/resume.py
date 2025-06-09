@@ -1,11 +1,7 @@
-from flask_login import current_user
-
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from models.resume import Resume, ResumeSection, ResumeItem, ResumeItemType
-from models.user import User
-from db import db
 
 from datetime import datetime, timezone
 
@@ -157,7 +153,7 @@ def _find_or_create_section(
 
     name = section_payload.get("name")
     if not name:
-        print(f"Warning: Missing name for section.")
+        print("Warning: Missing name for section.")
         return None
 
     if section:  # Existing section, update it

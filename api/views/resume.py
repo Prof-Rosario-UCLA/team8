@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
-from sqlalchemy import select, and_, func, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, and_
 
-from models.user import User
 from models.resume import Resume, ResumeSection, ResumeItem
 from models.template import Template
 from flask_login import login_required, current_user
@@ -100,7 +98,7 @@ def create_resume():
 @login_required
 def update_resume(id: int):
     data = request.get_json()
-    if not data or type(data) != dict:
+    if not data or type(data) is not dict:
         return jsonify({"error": "Missing required data"}), 400
 
     resume_to_update = get_full_resume(id, current_user.id, db.session)
@@ -221,7 +219,7 @@ def update_resume_section(resume_id: int, id: int):
     Update metadata information about a resume section.
     """
     data = request.get_json()
-    if not data or type(data) != dict:
+    if not data or type(data) is not dict:
         return jsonify({"error": "Missing required data"}), 400
 
     stmt_resume = select(Resume).where(

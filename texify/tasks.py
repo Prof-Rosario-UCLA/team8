@@ -1,9 +1,7 @@
 import os
-import time
 import subprocess
 import tempfile
 
-import json
 from jinja2 import Environment, FileSystemLoader
 
 from manager import celery_app
@@ -35,11 +33,11 @@ class LatexEnvironment(Environment):
 
     def _render_with_escaped_context(self, template_name, context):
         def auto_escape(value):
-            if type(value) == str:
+            if type(value) is str:
                 return escape_latex(value)
-            elif type(value) == list:
+            elif type(value) is list:
                 return [auto_escape(v) for v in value]
-            elif type(value) == dict:
+            elif type(value) is dict:
                 return {k: auto_escape(v) for k, v in value.items()}
             else:
                 return escape_latex(str(value))
@@ -72,7 +70,7 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
                 new_item = item
                 if (
                     section_name != "technical_skills"
-                    and type(item["description"]) == str
+                    and type(item["description"]) is str
                 ):
                     new_item["description"] = item["description"].split("\n")
                 new_data[section_name].append(item)

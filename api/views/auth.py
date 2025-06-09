@@ -36,7 +36,8 @@ def serialize_google_state(state: dict[str, str]) -> str | None:
     try:
         data = json.dumps(state).encode("utf-8")
         return base64.urlsafe_b64encode(data).decode("utf-8")
-    except:
+    except Exception as e:
+        print(e)
         return None
 
 
@@ -44,7 +45,8 @@ def deserialize_google_state(state: str) -> dict[str, str] | None:
     try:
         data = base64.urlsafe_b64decode(state).decode("utf-8")
         return json.loads(data)
-    except:
+    except Exception as e:
+        print(e)
         return None
 
 
@@ -103,17 +105,19 @@ def login():
 
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
-    base_url = (
-        "http://"
-        + request.headers.get("X-Forwarded-Host")
-        + request.path
-        if request.headers.get("X-Forwarded-Host")
-        else request.base_url
-    )
+    base_url = request.base_url
+    if request.headers.get("X-Forwarded-Host"):
+        base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
+    # TODO(bliutech): add some more checks here to prevent open redirect
+    if request.headers.get("Referer"):
+        base_url = "http://" + request.headers.get("Referer") + request.path
     current_app.logger.debug(base_url)
+    current_app.logger.debug(request.headers)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
+    current_app.logger.debug(request.headers.get("Referer"))
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         base_url = base_url.replace("http://", "https://")
+        base_url = base_url.replace("api-dot-prolio-resume", "prolio-resume")
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=base_url + "/callback",
@@ -134,13 +138,16 @@ def callback():
     google_provider_cfg = get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
-    AUTHORIZATION_URL=request.url
-    REDIRECT_URL=request.base_url
+    AUTHORIZATION_URL = request.url
+    REDIRECT_URL = request.base_url
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
     current_app.logger.debug(request.base_url)
     if request.headers.get("X-Forwarded-Host"):
-        REDIRECT_URL=request.headers.get("X-Forwarded-Host")
-        AUTHORIZATION_URL=AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
+        REDIRECT_URL = request.headers.get("X-Forwarded-Host")
+        AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
+    if request.headers.get("Referer"):
+        REDIRECT_URL = request.headers.get("Referer")
+        AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
 
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         AUTHORIZATION_URL = AUTHORIZATION_URL.replace("http://", "https://")
