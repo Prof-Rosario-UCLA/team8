@@ -82,9 +82,6 @@ pip-wheel-metadata/
 
 .vscode/
 
-# ignore migrations
-migrations/
-
 app.yaml
 gcs-access-key.json
 cloudbuild.yaml
