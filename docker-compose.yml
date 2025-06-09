@@ -48,6 +48,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - 9000:9000
+    environment:
+      - AUTHORIZATION_URL=http://127.0.0.1:9000/auth
+      - TOKEN_ENDPOINT=http://oauth:9000/token
+      - USERINFO_ENDPOINT=http://oauth:9000/userinfo
     restart: unless-stopped
   gcs:
     image: fsouza/fake-gcs-server

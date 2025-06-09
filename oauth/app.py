@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify, request, redirect
 import logging
 
@@ -21,13 +22,13 @@ def get_openid_config():
     app.logger.info("Retrieved OpenID config.")
     return {
         "issuer": "https://accounts.google.com",
-        "authorization_endpoint": f"http://127.0.0.1:{PORT}/auth" or f"http://localhost:{PORT}/auth"
-        or "https://accounts.google.com/o/oauth2/v2/auth",
+        "authorization_endpoint": os.environ.get("AUTHORIZATION_URL")
+        or f"http://localhost:{PORT}/auth",  # "https://accounts.google.com/o/oauth2/v2/auth"
         "device_authorization_endpoint": "https://oauth2.googleapis.com/device/code",
-        "token_endpoint": f"http://oauth:{PORT}/token" or f"http://localhost:{PORT}/token"
-        or "https://oauth2.googleapis.com/token",
-        "userinfo_endpoint": f"http://oauth:{PORT}/userinfo" or f"http://localhost:{PORT}/userinfo"
-        or "https://openidconnect.googleapis.com/v1/userinfo",
+        "token_endpoint": os.environ.get("TOKEN_ENDPOINT")
+        or f"http://localhost:{PORT}/token",  # "https://oauth2.googleapis.com/token"
+        "userinfo_endpoint": os.environ.get("USERINFO_ENDPOINT")
+        or f"http://localhost:{PORT}/userinfo",  # "https://openidconnect.googleapis.com/v1/userinfo"
         "revocation_endpoint": "https://oauth2.googleapis.com/revoke",
         "jwks_uri": "https://www.googleapis.com/oauth2/v3/certs",
         "response_types_supported": [
