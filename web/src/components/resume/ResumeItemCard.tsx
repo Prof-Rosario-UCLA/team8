@@ -169,11 +169,9 @@ export default function ResumeItemCard({
           <div className={layout.dateRow}>
             <LabelledInput 
               label="Start Date" 
-              htmlFor={`start_date-compact-${resumeItem.id}`}
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  id={`start_date-compact-${resumeItem.id}`}
                   value={resumeItem.start_date}
                   onChange={(date) => handleFieldChange("start_date", date)}
                   compact={true}
@@ -183,11 +181,9 @@ export default function ResumeItemCard({
             />
             <LabelledInput 
               label="End Date" 
-              htmlFor={`end_date-compact-${resumeItem.id}`}
               className="flex-1"
               input={
                 <ResumeMonthYearField
-                  id={`end_date-compact-${resumeItem.id}`}
                   value={resumeItem.end_date}
                   onChange={(date) => handleFieldChange("end_date", date)}
                   compact={true}

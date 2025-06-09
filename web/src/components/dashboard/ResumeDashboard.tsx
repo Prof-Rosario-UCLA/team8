@@ -138,7 +138,7 @@ export default function ResumeDashboard() {
                         <div className="flex justify-between items-start">
                           <div className="flex items-center space-x-2">
                             <FileTextIcon className="h-5 w-5 text-blue-600" />
-                            <CardTitle className="text-lg">{resume.name}</CardTitle>
+                            <CardTitle className="text-lg">{resume.resume_name}</CardTitle>
                           </div>
                         </div>
                         <CardDescription className="flex items-center text-sm text-gray-500">

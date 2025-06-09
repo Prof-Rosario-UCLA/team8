@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react"
 import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES, ResumeUpdatePayload } from "@/lib/types/Resume"
 import LoadingPage from "@/components/loading/Loading"
+import LabelledInput from "@/components/ui/LabelledInput"
+import { Input } from "@/components/ui/input"
 import { parseDates } from "@/lib/utils/date"
 import {
   DropdownMenu,
@@ -13,11 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import ResumeTOC from "@/components/resume/ResumeTOC"
 import { DragEndEvent } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
 import UserInfoCard from "@/components/resume/UserInfoCard"
+import { cn } from "@/lib/utils"
 
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
@@ -275,6 +278,14 @@ function useResumeEditor(resumeId: string) {
     setHasUnsavedChanges(true);
   };
 
+  const updateResumeName = (name: string) => {
+    setResume(prev => {
+      if (!prev) return null;
+      return { ...prev, resume_name: name, updated_at: new Date() };
+    });
+    setHasUnsavedChanges(true);
+  }
+
   const saveResume = async () => {
     if (!resume) return
     
@@ -332,11 +343,13 @@ function useResumeEditor(resumeId: string) {
     availableSectionTypes,
     handleDragEnd,
     updateUserInfo,
+    updateResumeName,
   }
 }
 
 export default function ResumeEditorPage({ params }: { params: Promise<{ resume_id: string }> }) {
   const [resolvedParams, setResolvedParams] = useState<{ resume_id: string } | null>(null)
+  const [isTocOpen, setIsTocOpen] = useState(true)
 
   useEffect(() => {
     params.then(setResolvedParams)
@@ -360,17 +373,21 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     )
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo } = resumeEditor
+  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName } = resumeEditor
 
   // Split view: editor on left, preview on right
   const leftPanel = (
-    <section className="w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
+    <section className="w-full md:w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
       {/* Editor Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">{resume.resume_name}</h1>
-            <p className="text-sm text-gray-600">Resume Editor</p>
+            <h1 className="text-xl font-semibold text-gray-900 pb-4">Resume Editor</h1>
+            <LabelledInput
+              label="Resume Name"
+              htmlFor="resume_name"
+              input={<Input id="resume_name" value={resume.resume_name} onChange={(e) => updateResumeName(e.target.value)} />}
+            />
           </div>
           <div className="flex gap-2">
             <Button 
@@ -449,7 +466,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
   // Right panel WILL be an iframe of the latex resume pdf, currently just placeholder html elements
   const rightPanel = (
-    <section className="w-1/2 bg-white overflow-auto">
+    <section className="w-1/2 bg-white overflow-auto hidden md:block">
       {/* Preview Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center gap-2">
@@ -509,7 +526,25 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
   return (
     <section className="flex h-full">
-      <ResumeTOC resume={resume} handleDragEnd={handleDragEnd} />
+      <div className={cn(
+          "relative h-full transition-all duration-300 ease-in-out w-0 border-r border-gray-200",
+          isTocOpen ? "md:w-64" : "md:w-10"
+      )}>
+        {isTocOpen && <ResumeTOC resume={resume} handleDragEnd={handleDragEnd} />}
+        <Button
+            onClick={() => setIsTocOpen(!isTocOpen)}
+            variant="outline"
+            size="icon"
+            className="absolute top-1/2 z-30 bg-white rounded-full shadow-md h-8 w-8 hidden md:flex"
+            style={{
+              right: isTocOpen ? '-16px' : undefined,
+              left: isTocOpen ? undefined : '50%',
+              transform: isTocOpen ? 'translateY(-50%)' : 'translate(-50%, -50%)',
+            }}
+          >
+            {isTocOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+      </div>
       <div className="flex-1 flex">
         {leftPanel}
         {rightPanel}

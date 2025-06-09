@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { HomeIcon, LayoutDashboardIcon, FileTextIcon } from "lucide-react"
+import Image from "next/image"
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -38,7 +39,7 @@ export default function Navbar() {
           {/* Logo/Brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <FileTextIcon className="h-8 w-8 text-blue-600" />
+              <Image src="/ProlioLogo.png" alt="Prolio Logo" width={32} height={32} className="rounded-sm" />
               <span className="font-bold text-xl text-gray-900">Prolio</span>
             </Link>
           </div>

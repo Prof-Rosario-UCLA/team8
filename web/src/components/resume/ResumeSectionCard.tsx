@@ -70,7 +70,7 @@ export default function ResumeSection({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {/* Section Elevator Buttons */}
-            {(onMoveUp || onMoveDown) && (
+            {/* {(onMoveUp || onMoveDown) && (
               <div className="flex space-x-1">
                 <Button
                   size="icon"
@@ -99,7 +99,7 @@ export default function ResumeSection({
                   <ChevronDownIcon className="h-4 w-4" />
                 </Button>
               </div>
-            )}
+            )} */}
             <CardTitle className={layout.title}>
               {title}
             </CardTitle>
