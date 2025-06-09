@@ -50,18 +50,21 @@ def create_resume():
     It does not require any data in the request body.
     """
     # Find a default template to assign to the new resume.
-    default_template = db.session.execute(select(Template).limit(1)).scalar_one_or_none()
+    default_template = db.session.execute(
+        select(Template).limit(1)
+    ).scalar_one_or_none()
     if not default_template:
-        return jsonify({"error": "No templates found in the system. Cannot create a resume."}), 500
+        return jsonify(
+            {"error": "No templates found in the system. Cannot create a resume."}
+        ), 500
 
     # Generate a unique default name for the resume (e.g., "Untitled Resume (2)").
     base_name = "Untitled Resume"
     existing_names_stmt = select(Resume.name).where(
-        Resume.user_id == current_user.id,
-        Resume.name.like(f"{base_name}%")
+        Resume.user_id == current_user.id, Resume.name.like(f"{base_name}%")
     )
     existing_names = db.session.execute(existing_names_stmt).scalars().all()
-    
+
     new_name = base_name
     counter = 1
     while new_name in existing_names:
@@ -72,15 +75,15 @@ def create_resume():
     res = Resume()
     res.user_id = current_user.id
     res.name = new_name
-    
+
     res.resume_name = "Untitled Resume"
     res.template_id = default_template.id
     # Other fields (phone, email, etc.) will be null by default, though we could
     # also default the resume's 'email' field to current_user.email here.
     res.email = current_user.email
-    
+
     res.save_to_db()
-    db.session.flush() # Ensure the new ID is available for get_full_resume
+    db.session.flush()  # Ensure the new ID is available for get_full_resume
 
     # Fetch the full resume object to return to the frontend.
     new_resume = get_full_resume(res.id, current_user.id, db.session)
@@ -91,6 +94,7 @@ def create_resume():
     else:
         # This case should ideally not be reached if creation was successful.
         return jsonify({"error": "Failed to retrieve the created resume."}), 500
+
 
 @resume_views.put("/update/<int:id>")
 @login_required
@@ -106,29 +110,33 @@ def update_resume(id: int):
 
     try:
         process_resume_update(resume_to_update, data, current_user.id, db.session)
-        
+
         db.session.commit()
-        
+
         # Re-fetch the entire resume to get the latest state with new IDs
         updated_resume = get_full_resume(id, current_user.id, db.session)
-        
+
         if not updated_resume:
             # This would be unusual, but handle it
             return jsonify({"error": "Could not retrieve updated resume."}), 404
 
         # The frontend expects the resume object directly
         return jsonify(updated_resume.json())
-    
+
     except Exception as e:
         db.session.rollback()
         print(f"Error during resume update: {e}")
-        return jsonify({"error": "An unexpected error occurred while updating the resume."}), 500
+        return jsonify(
+            {"error": "An unexpected error occurred while updating the resume."}
+        ), 500
 
 
 @resume_views.delete("/delete/<int:id>")
 @login_required
 def delete_resume(id: int):
-    stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == id))
+    stmt = select(Resume).where(
+        and_(Resume.user_id == current_user.id, Resume.id == id)
+    )
     result = db.session.execute(stmt).scalar()
 
     if not result:
@@ -148,7 +156,9 @@ def get_resume_section(resume_id: int, id: int):
     """
     Get a resume section.
     """
-    resume_stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == resume_id))
+    resume_stmt = select(Resume).where(
+        and_(Resume.user_id == current_user.id, Resume.id == resume_id)
+    )
     resume = db.session.execute(resume_stmt).scalar()
     if not resume:
         return {"error": "Resume not found or access denied"}, 404
@@ -157,7 +167,7 @@ def get_resume_section(resume_id: int, id: int):
         and_(
             ResumeSection.user_id == current_user.id,
             ResumeSection.resume_id == resume.id,
-            ResumeSection.id == id
+            ResumeSection.id == id,
         )
     )
     result = db.session.execute(stmt).scalar()
@@ -175,7 +185,7 @@ def create_resume_section(resume_id: int):
     data = request.get_json()
     if not data or not data.get("name"):
         return jsonify({"error": "Missing name"}), 400
-    if not data.get("section_type"): 
+    if not data.get("section_type"):
         return jsonify({"error": "Missing or incorrect section_type"}), 400
 
     stmt = select(Resume).where(
@@ -196,7 +206,12 @@ def create_resume_section(resume_id: int):
     new_section.save_to_db()
     db.session.flush()
 
-    return jsonify({"message": f"Resume section (id = {new_section.id}) created successfully.", "section": new_section.json()})
+    return jsonify(
+        {
+            "message": f"Resume section (id = {new_section.id}) created successfully.",
+            "section": new_section.json(),
+        }
+    )
 
 
 @resume_views.put("/section/update/<int:resume_id>/<int:id>")
@@ -217,13 +232,17 @@ def update_resume_section(resume_id: int, id: int):
         return {"error": "Resume id not found or access denied"}, 404
 
     stmt_section = select(ResumeSection).where(
-        and_(ResumeSection.user_id == current_user.id, 
-             ResumeSection.id == id,
-             ResumeSection.resume_id == resume.id) 
+        and_(
+            ResumeSection.user_id == current_user.id,
+            ResumeSection.id == id,
+            ResumeSection.resume_id == resume.id,
+        )
     )
     section_to_update = db.session.execute(stmt_section).scalar()
     if not section_to_update:
-        return {"error": "Resume section id not found or not associated with this resume"}, 404
+        return {
+            "error": "Resume section id not found or not associated with this resume"
+        }, 404
 
     if "name" in data:
         section_to_update.name = data["name"]
@@ -231,9 +250,11 @@ def update_resume_section(resume_id: int, id: int):
         section_to_update.section_type = data["section_type"]
     if "display_order" in data:
         section_to_update.display_order = data["display_order"]
-    
+
     section_to_update.save_to_db()
-    return jsonify({"message": "Updated resume section", "section": section_to_update.json()})
+    return jsonify(
+        {"message": "Updated resume section", "section": section_to_update.json()}
+    )
 
 
 @resume_views.delete("/section/delete/<int:resume_id>/<int:id>")
@@ -242,15 +263,19 @@ def delete_resume_section(resume_id: int, id: int):
     """
     Delete a resume section.
     """
-    resume_stmt = select(Resume).where(and_(Resume.user_id == current_user.id, Resume.id == resume_id))
+    resume_stmt = select(Resume).where(
+        and_(Resume.user_id == current_user.id, Resume.id == resume_id)
+    )
     resume = db.session.execute(resume_stmt).scalar()
     if not resume:
         return {"error": "Resume not found or access denied"}, 404
 
     stmt = select(ResumeSection).where(
-        and_(ResumeSection.user_id == current_user.id,
-             ResumeSection.resume_id == resume.id,
-             ResumeSection.id == id)
+        and_(
+            ResumeSection.user_id == current_user.id,
+            ResumeSection.resume_id == resume.id,
+            ResumeSection.id == id,
+        )
     )
     section_to_delete = db.session.execute(stmt).scalar()
 
@@ -286,13 +311,21 @@ def create_resume_item():
     Create a resume item.
     """
     data = request.get_json()
-    if not data: return jsonify({"error": "Missing data"}), 400
+    if not data:
+        return jsonify({"error": "Missing data"}), 400
 
-    required_fields = ["item_type", "title", "organization", "start_date", "location", "description"]
+    required_fields = [
+        "item_type",
+        "title",
+        "organization",
+        "start_date",
+        "location",
+        "description",
+    ]
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"Missing {field}"}), 400
-    
+
     new_item = ResumeItem()
     new_item.user_id = current_user.id
     new_item.item_type = data["item_type"]
@@ -302,10 +335,12 @@ def create_resume_item():
     new_item.end_date = data.get("end_date")
     new_item.location = data["location"]
     new_item.description = data["description"]
-    
+
     new_item.save_to_db()
     db.session.flush()
-    return jsonify({"message": f"Item (id = {new_item.id}) created", "item": new_item.json()})
+    return jsonify(
+        {"message": f"Item (id = {new_item.id}) created", "item": new_item.json()}
+    )
 
 
 @resume_views.put("/item/update/<int:id>")
@@ -315,8 +350,9 @@ def update_resume_item(id: int):
     Update a resume item.
     """
     data = request.get_json()
-    if not data: return jsonify({"error": "Missing data"}), 400
-    
+    if not data:
+        return jsonify({"error": "Missing data"}), 400
+
     stmt = select(ResumeItem).where(
         and_(ResumeItem.user_id == current_user.id, ResumeItem.id == id)
     )
@@ -324,16 +360,25 @@ def update_resume_item(id: int):
     if not item:
         return {"error": "Resume item not found."}, 404
 
-    if "item_type" in data: item.item_type = data["item_type"]
-    if "title" in data: item.title = data["title"]
-    if "organization" in data: item.organization = data["organization"]
-    if "start_date" in data: item.start_date = data["start_date"]
-    if "end_date" in data: item.end_date = data["end_date"]
-    if "location" in data: item.location = data["location"]
-    if "description" in data: item.description = data["description"]
-    
+    if "item_type" in data:
+        item.item_type = data["item_type"]
+    if "title" in data:
+        item.title = data["title"]
+    if "organization" in data:
+        item.organization = data["organization"]
+    if "start_date" in data:
+        item.start_date = data["start_date"]
+    if "end_date" in data:
+        item.end_date = data["end_date"]
+    if "location" in data:
+        item.location = data["location"]
+    if "description" in data:
+        item.description = data["description"]
+
     item.save_to_db()
-    return jsonify({"message": f"Updated resume item (id = {item.id})", "item": item.json()})
+    return jsonify(
+        {"message": f"Updated resume item (id = {item.id})", "item": item.json()}
+    )
 
 
 @resume_views.delete("/item/delete/<int:id>")

@@ -16,7 +16,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
     ports:
-      - "5001:5001"
+      - "5001:8080"
     environment:
       - FLASK_APP=app
       - FLASK_DEBUG=1
@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     privileged: true
     ports:
-      - 9090:9090
+      - 9090:8080
     environment:
       - GCS_BUCKET_NAME=prolio
       - GCS_EMULATOR_HOST=http://gcs:4443

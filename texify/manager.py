@@ -7,7 +7,4 @@ celery_app = Celery(
     "texify",
     broker=f"redis://{REDIS_IP}:6379/0",
 )
-celery_app.conf.update(
-    result_backend=f"redis://{REDIS_IP}:6379/1",
-    include=["tasks"]
-)
+celery_app.conf.update(result_backend=f"redis://{REDIS_IP}:6379/1", include=["tasks"])

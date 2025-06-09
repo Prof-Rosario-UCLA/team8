@@ -19,7 +19,6 @@ USER app
 # TODO(bliutech): look into whether we can take advantage of Docker layer caching here
 COPY . /app/
 
-
-EXPOSE 9090
+EXPOSE 8080
 
 ENTRYPOINT [ "/app/start.sh" ]

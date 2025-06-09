@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 # TODO(bliutech): refactor core logic from views/resume.py into here
 
+
 def parse_iso_date_string(date_string: str | None) -> datetime | None:
     """
     Parses an ISO 8601 date string into a timezone-aware datetime object (UTC).
@@ -22,18 +23,22 @@ def parse_iso_date_string(date_string: str | None) -> datetime | None:
         return None
     try:
         # Replace 'Z' with '+00:00' for broader compatibility with fromisoformat
-        if date_string.endswith('Z'):
-            date_string = date_string[:-1] + '+00:00'
-        
+        if date_string.endswith("Z"):
+            date_string = date_string[:-1] + "+00:00"
+
         dt_object = datetime.fromisoformat(date_string)
-        
+
         # Ensure the datetime object is timezone-aware, defaulting to UTC if naive
         if dt_object.tzinfo is None:
             return dt_object.replace(tzinfo=timezone.utc)
-        return dt_object.astimezone(timezone.utc) # Convert to UTC if it has other timezone
+        return dt_object.astimezone(
+            timezone.utc
+        )  # Convert to UTC if it has other timezone
     except ValueError:
         # Log an error or handle appropriately if parsing fails
-        print(f"Warning: Could not parse date string: {date_string}") # Or use proper logging
+        print(
+            f"Warning: Could not parse date string: {date_string}"
+        )  # Or use proper logging
         return None
 
 
@@ -58,13 +63,16 @@ def _parse_item_data(item_payload: dict, user_id: int) -> dict | None:
     }
 
     if not parsed_data["start_date"]:
-         print(f"Warning: Invalid start_date format: {item_payload['start_date']}")
-         return None
+        print(f"Warning: Invalid start_date format: {item_payload['start_date']}")
+        return None
 
     # If end_date was provided but couldn't be parsed, it would be None here, which is acceptable for nullable field.
     return parsed_data
 
-def _find_or_create_item(item_payload: dict, user_id: int, section_id: int, display_order: int, db_session) -> ResumeItem | None:
+
+def _find_or_create_item(
+    item_payload: dict, user_id: int, section_id: int, display_order: int, db_session
+) -> ResumeItem | None:
     """
     Finds an existing ResumeItem by ID or creates a new one for the given section.
     It ensures the item belongs to the current user and section if an ID is provided.
@@ -76,26 +84,29 @@ def _find_or_create_item(item_payload: dict, user_id: int, section_id: int, disp
         try:
             item_id = int(item_id)
             stmt = select(ResumeItem).where(
-                ResumeItem.id == item_id, 
+                ResumeItem.id == item_id,
                 ResumeItem.user_id == user_id,
-                ResumeItem.section_id == section_id # Item must belong to the section being processed
+                ResumeItem.section_id
+                == section_id,  # Item must belong to the section being processed
             )
             item = db_session.execute(stmt).scalar_one_or_none()
             # If item is not found, we fall through and create a new one below.
         except (ValueError, TypeError):
             # If item_id is not a valid integer (e.g., a client-side UUID), treat as a new item.
             item = None
-            print(f"Warning: Invalid item_id format: {item_payload.get('id')}. Treating as new item.")
+            print(
+                f"Warning: Invalid item_id format: {item_payload.get('id')}. Treating as new item."
+            )
 
     parsed_data = _parse_item_data(item_payload, user_id)
     if not parsed_data:
         return None
 
-    if item: # Existing item found, update it
+    if item:  # Existing item found, update it
         for key, value in parsed_data.items():
             setattr(item, key, value)
-        item.display_order = display_order # Always update display order
-    else: # New item
+        item.display_order = display_order  # Always update display order
+    else:  # New item
         item = ResumeItem()
         for key, value in parsed_data.items():
             setattr(item, key, value)
@@ -105,7 +116,10 @@ def _find_or_create_item(item_payload: dict, user_id: int, section_id: int, disp
         db_session.add(item)
     return item
 
-def _find_or_create_section(section_payload: dict, resume_id: int, user_id: int, display_order: int, db_session) -> ResumeSection | None:
+
+def _find_or_create_section(
+    section_payload: dict, resume_id: int, user_id: int, display_order: int, db_session
+) -> ResumeSection | None:
     """
     Finds an existing ResumeSection by ID or creates a new one for the given resume and user.
     Updates display_order for both existing and new sections.
@@ -117,20 +131,26 @@ def _find_or_create_section(section_payload: dict, resume_id: int, user_id: int,
         try:
             section_id = int(section_id)
             stmt = select(ResumeSection).where(
-                ResumeSection.id == section_id, 
-                ResumeSection.user_id == user_id, 
-                ResumeSection.resume_id == resume_id
+                ResumeSection.id == section_id,
+                ResumeSection.user_id == user_id,
+                ResumeSection.resume_id == resume_id,
             )
             section = db_session.execute(stmt).scalar_one_or_none()
             # If section is not found, we fall through to create a new one below.
         except (ValueError, TypeError):
             # If section_id is not a valid int, treat as a new section.
             section = None
-            print(f"Warning: Invalid section_id format: {section_payload.get('id')}. Treating as new section.")
+            print(
+                f"Warning: Invalid section_id format: {section_payload.get('id')}. Treating as new section."
+            )
 
-    section_type_input = section_payload.get("type") or section_payload.get("section_type")
+    section_type_input = section_payload.get("type") or section_payload.get(
+        "section_type"
+    )
     try:
-        section_type_val = ResumeItemType(str(section_type_input).lower()) # lower in case frontend sends it with capitalized letters
+        section_type_val = ResumeItemType(
+            str(section_type_input).lower()
+        )  # lower in case frontend sends it with capitalized letters
     except ValueError:
         print(f"Warning: Invalid section_type: {section_type_input}")
         return None
@@ -140,11 +160,11 @@ def _find_or_create_section(section_payload: dict, resume_id: int, user_id: int,
         print(f"Warning: Missing name for section.")
         return None
 
-    if section: # Existing section, update it
+    if section:  # Existing section, update it
         section.name = name
         section.section_type = section_type_val
         section.display_order = display_order
-    else: # New section
+    else:  # New section
         section = ResumeSection()
         section.user_id = user_id
         section.resume_id = resume_id
@@ -152,10 +172,13 @@ def _find_or_create_section(section_payload: dict, resume_id: int, user_id: int,
         section.section_type = section_type_val
         section.display_order = display_order
         db_session.add(section)
-        db_session.flush() # Ensure ID is available for item processing
+        db_session.flush()  # Ensure ID is available for item processing
     return section
 
-def _update_section_items(section_db: ResumeSection, items_payload: list[dict], user_id: int, db_session):
+
+def _update_section_items(
+    section_db: ResumeSection, items_payload: list[dict], user_id: int, db_session
+):
     """
     Synchronizes the items of a given section with the payload using a one-to-many relationship.
     Creates, updates, or deletes items as needed. Manages item order within the section.
@@ -164,9 +187,13 @@ def _update_section_items(section_db: ResumeSection, items_payload: list[dict], 
     updated_items_collection = []
     for item_idx, item_data_payload in enumerate(items_payload):
         # We now pass the section_id and display_order directly
-        item_db = _find_or_create_item(item_data_payload, user_id, section_db.id, item_idx, db_session)
+        item_db = _find_or_create_item(
+            item_data_payload, user_id, section_db.id, item_idx, db_session
+        )
         if not item_db:
-            print(f"Skipping item due to creation/find failure: {item_data_payload.get('title')}")
+            print(
+                f"Skipping item due to creation/find failure: {item_data_payload.get('title')}"
+            )
             # Potentially raise an error here to abort the transaction
             continue
         updated_items_collection.append(item_db)
@@ -175,6 +202,7 @@ def _update_section_items(section_db: ResumeSection, items_payload: list[dict], 
     # SQLAlchemy will automatically detect which items are new (INSERT), which are removed (DELETE),
     # and which are existing (and will be updated by the logic in _find_or_create_item).
     section_db.items = updated_items_collection
+
 
 def process_resume_update(resume_db: Resume, payload: dict, user_id: int, db_session):
     """
@@ -193,35 +221,56 @@ def process_resume_update(resume_db: Resume, payload: dict, user_id: int, db_ses
 
     # Process Sections
     sections_payload = payload.get("sections", [])
-    
+
     # Get current sections from DB for this resume to find orphans later
-    current_db_sections_stmt = select(ResumeSection.id).where(ResumeSection.resume_id == resume_db.id)
-    current_db_section_ids = {s_id for s_id, in db_session.execute(current_db_sections_stmt).all()}
+    current_db_sections_stmt = select(ResumeSection.id).where(
+        ResumeSection.resume_id == resume_db.id
+    )
+    current_db_section_ids = {
+        s_id for (s_id,) in db_session.execute(current_db_sections_stmt).all()
+    }
     processed_section_ids_in_payload = set()
 
     for section_idx, section_data_payload in enumerate(sections_payload):
-        section_db = _find_or_create_section(section_data_payload, resume_db.id, user_id, section_idx, db_session)
+        section_db = _find_or_create_section(
+            section_data_payload, resume_db.id, user_id, section_idx, db_session
+        )
         if not section_db:
-            print(f"Skipping section due to creation/find failure: {section_data_payload.get('name')}")
-            continue # Skip processing this section if it failed
-        
+            print(
+                f"Skipping section due to creation/find failure: {section_data_payload.get('name')}"
+            )
+            continue  # Skip processing this section if it failed
+
         processed_section_ids_in_payload.add(section_db.id)
-        
+
         items_payload_for_section = section_data_payload.get("items", [])
-        _update_section_items(section_db, items_payload_for_section, user_id, db_session)
+        _update_section_items(
+            section_db, items_payload_for_section, user_id, db_session
+        )
 
     # Delete Orphaned Sections (sections in DB but not in payload for this resume)
     section_ids_to_delete = current_db_section_ids - processed_section_ids_in_payload
     for sec_id_to_delete in section_ids_to_delete:
-        section_to_delete_stmt = select(ResumeSection).where(ResumeSection.id == sec_id_to_delete, ResumeSection.user_id == user_id, ResumeSection.resume_id == resume_db.id)
-        section_to_delete = db_session.execute(section_to_delete_stmt).scalar_one_or_none()
+        section_to_delete_stmt = select(ResumeSection).where(
+            ResumeSection.id == sec_id_to_delete,
+            ResumeSection.user_id == user_id,
+            ResumeSection.resume_id == resume_db.id,
+        )
+        section_to_delete = db_session.execute(
+            section_to_delete_stmt
+        ).scalar_one_or_none()
         if section_to_delete:
-            db_session.delete(section_to_delete) # Cascading delete should handle its associations
-            print(f"Deleting orphaned section_id {sec_id_to_delete} from resume_id {resume_db.id}")
-    
+            db_session.delete(
+                section_to_delete
+            )  # Cascading delete should handle its associations
+            print(
+                f"Deleting orphaned section_id {sec_id_to_delete} from resume_id {resume_db.id}"
+            )
+
     # Save changes for resume scalars, new/updated sections, items, associations
     # The db_session.commit() will be handled in the view function after this returns.
     return resume_db
+
 
 def get_full_resume(resume_id: int, user_id: int, db_session) -> Resume | None:
     """
@@ -231,8 +280,6 @@ def get_full_resume(resume_id: int, user_id: int, db_session) -> Resume | None:
     stmt = (
         select(Resume)
         .where(Resume.id == resume_id, Resume.user_id == user_id)
-        .options(
-            selectinload(Resume.sections).selectinload(ResumeSection.items)
-        )
+        .options(selectinload(Resume.sections).selectinload(ResumeSection.items))
     )
     return db_session.execute(stmt).scalar_one_or_none()

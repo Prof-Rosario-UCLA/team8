@@ -13,6 +13,7 @@ from models.template import Template
 
 from db import db
 
+
 class Resume(db.Model, Base):
     __tablename__ = "resumes"
 
@@ -34,9 +35,9 @@ class Resume(db.Model, Base):
     )
 
     sections: Mapped[List["ResumeSection"]] = relationship(
-        back_populates="resume", 
-        order_by="ResumeSection.display_order", 
-        cascade="all, delete-orphan"
+        back_populates="resume",
+        order_by="ResumeSection.display_order",
+        cascade="all, delete-orphan",
     )
 
     @override
@@ -54,8 +55,11 @@ class Resume(db.Model, Base):
             "linkedin": self.linkedin,
             "github": self.github,
             "website": self.website,
-            "sections": [sec.json() for sec in self.sections], # TODO: sort by display order and return list
+            "sections": [
+                sec.json() for sec in self.sections
+            ],  # TODO: sort by display order and return list
         }
+
 
 class ResumeItemType(enum.Enum):
     education = "education"
@@ -78,7 +82,7 @@ class ResumeSection(db.Model, Base):
     items: Mapped[List["ResumeItem"]] = relationship(
         back_populates="section",
         cascade="all, delete-orphan",
-        order_by="ResumeItem.display_order"
+        order_by="ResumeItem.display_order",
     )
 
     @override
@@ -90,7 +94,7 @@ class ResumeSection(db.Model, Base):
             "name": self.name,
             "section_type": self.section_type.value,
             "display_order": self.display_order,
-            "items": [item.json() for item in self.items]
+            "items": [item.json() for item in self.items],
         }
 
 
@@ -105,16 +109,22 @@ class ResumeItem(db.Model, Base):
     # university, company, (optional) project group
     organization: Mapped[str] = mapped_column(nullable=False)
     # start date
-    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    start_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     # end date
-    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # university location, job location, GitHub project URL
     location: Mapped[str] = mapped_column(nullable=False)
     # Bulletpoints not saved but bullet items are on each line
     description: Mapped[str] = mapped_column(nullable=False)
-    
-    section_id: Mapped[int] = mapped_column(ForeignKey("resume_sections.id", ondelete="CASCADE"))
+
+    section_id: Mapped[int] = mapped_column(
+        ForeignKey("resume_sections.id", ondelete="CASCADE")
+    )
     display_order: Mapped[int] = mapped_column(default=0)
 
     section: Mapped["ResumeSection"] = relationship(back_populates="items")
@@ -124,7 +134,7 @@ class ResumeItem(db.Model, Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "section_id": self.section_id, # Include parent section ID
+            "section_id": self.section_id,  # Include parent section ID
             "title": self.title,
             "organization": self.organization,
             "start_date": self.start_date.isoformat() if self.start_date else None,
@@ -158,4 +168,3 @@ class ResumeItem(db.Model, Base):
 #             "item_id": self.item_id,
 #             "display_order": self.display_order,
 #         }
-
