@@ -1,0 +1,9 @@
+node_modules/
+__pycache__/
+.env*
+.flaskenv
+venv/
+.ruff_cache/
+.git/
+samples/
+.DS_Store

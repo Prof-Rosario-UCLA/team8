@@ -1,40 +1,42 @@
 steps:
-  # Pull latest version of images to take advantage of docker layer caching
+  # Pull latest version of images for caching
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['pull', 'gcr.io/$PROJECT_ID/prolio-web:latest']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['pull', 'gcr.io/$PROJECT_ID/prolio-api:latest']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['pull', 'gcr.io/$PROJECT_ID/prolio-texify:latest']
-
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      docker pull gcr.io/$PROJECT_ID/prolio-web:latest || exit 0
+      docker pull gcr.io/$PROJECT_ID/prolio-api:latest || exit 0
+      docker pull gcr.io/$PROJECT_ID/prolio-texify:latest || exit 0
   # Build most recent change
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
       '-t', 'gcr.io/$PROJECT_ID/prolio-web:latest',
+      '--cache-from=gcr.io/$PROJECT_ID/prolio-web:latest',
       '--build-arg', 'SERVER_URL=$SERVER_URL',
       'web/'
     ]
   - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/prolio-web:latest']
+  - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
       '-t', 'gcr.io/$PROJECT_ID/prolio-api:latest',
+      '--cache-from=gcr.io/$PROJECT_ID/prolio-api:latest',
       'api/'
     ]
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/prolio-api:latest']
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
       '-t', 'gcr.io/$PROJECT_ID/prolio-texify:latest',
+      '--cache-from=gcr.io/$PROJECT_ID/prolio-texify:latest',
       'texify/'
     ]
-
-  # Push to GCR
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/prolio-api:latest']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/prolio-texify:latest']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/prolio-web:latest']
 
   # Deploy to App Engine Flexible
   # Web is the "default" service so deploy this to App Engine first
@@ -46,6 +48,6 @@ steps:
     args: ['app', 'deploy', 'texify/app.yaml', '--quiet', '--image-url=gcr.io/prolio-resume/prolio-texify:latest']
 
 images:
+  - 'gcr.io/$PROJECT_ID/prolio-web:latest'
   - 'gcr.io/$PROJECT_ID/prolio-api:latest'
   - 'gcr.io/$PROJECT_ID/prolio-texify:latest'
-  - 'gcr.io/$PROJECT_ID/prolio-web:latest'
