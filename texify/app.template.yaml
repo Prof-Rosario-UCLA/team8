@@ -5,3 +5,4 @@ service: texify
 env_variables:
   GCS_BUCKET_NAME: $GCS_BUCKET_NAME
   GOOGLE_APPLICATION_CREDENTIALS: /app/gcs-access-key.json
+  REDIS_IP: $REDIS_IP

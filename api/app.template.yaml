@@ -2,5 +2,10 @@ runtime: custom
 env: flex
 service: api
 
+# TODO(bliutech): add full support for environment variables
+# For example, add environment variables for frontend origin for CORS
 env_variables:
-  
+  DATABASE_URL: $DATABASE_URL
+  GOOGLE_CLIENT_ID: $GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_SECRET: $GOOGLE_CLIENT_SECRET
+  CLIENT_ORIGIN: $CLIENT_ORIGIN

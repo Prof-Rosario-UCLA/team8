@@ -13,8 +13,9 @@ load_dotenv(".flaskenv")
 
 app = Flask(__name__)
 # --- CORS Configuration ---
+CLIENT_ORIGIN = os.environ.get("CLIENT_ORIGIN") or "http://localhost:3000"
 # Allow requests from your Next.js development server (default port 3000)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/api/*": {"origins": CLIENT_ORIGIN}})
 
 
 # Database Configuration

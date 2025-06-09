@@ -87,3 +87,4 @@ migrations/
 
 app.yaml
 gcs-access-key.json
+cloudbuild.yaml

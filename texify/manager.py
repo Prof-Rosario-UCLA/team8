@@ -1,8 +1,13 @@
+import os
 from celery import Celery
 
-# TODO(bliutech): make the redis instance configurable via environment variables
+REDIS_IP = os.environ.get("REDIS_IP") or "redis"
+
 celery_app = Celery(
     "texify",
-    broker="redis://redis:6379/0",
+    broker=f"redis://{REDIS_IP}:6379/0",
 )
-celery_app.conf.update(result_backend="redis://redis:6379/1", include=["tasks"])
+celery_app.conf.update(
+    result_backend=f"redis://{REDIS_IP}:6379/1",
+    include=["tasks"]
+)

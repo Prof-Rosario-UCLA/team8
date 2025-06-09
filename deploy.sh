@@ -22,6 +22,9 @@ for SERVICE in "${SERVICES[@]}"; do
     envsubst < "$SERVICE/app.template.yaml" > "$SERVICE/app.yaml";
 done
 
+# Find and replace $SERVER_URL for web in cloudbuild.yaml
+sed "s|\$SERVER_URL|${SERVER_URL}|g" cloudbuild.template.yaml > cloudbuild.yaml;
+
 # Run Cloud Build
 gcloud builds submit --config=cloudbuild.yaml .;
 
@@ -29,3 +32,6 @@ gcloud builds submit --config=cloudbuild.yaml .;
 for SERVICE in "${SERVICES[@]}"; do
     rm "$SERVICE/app.yaml";
 done
+
+# Remove cloudbuild.yaml
+rm cloudbuild.yaml;
