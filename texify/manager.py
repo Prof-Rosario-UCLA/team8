@@ -1,5 +1,6 @@
 from celery import Celery
 
+# TODO(bliutech): make the redis instance configurable via environment variables
 celery_app = Celery(
     "texify",
     broker="redis://redis:6379/0",

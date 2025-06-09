@@ -3,6 +3,8 @@ __pycache__/
 fake-gcs-data/
 venv/
 .env
-Dockerfile
-docker-compose.yml
 README.md
+Dockerfile
+.dockerignore
+app.yaml
+app.template.yaml

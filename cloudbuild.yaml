@@ -1,15 +1,20 @@
 steps:
   # Pull latest version of images to take advantage of docker layer caching
   - name: 'gcr.io/cloud-builders/docker'
+    args: ['pull', 'gcr.io/$PROJECT_ID/prolio-web:latest']
+  - name: 'gcr.io/cloud-builders/docker'
     args: ['pull', 'gcr.io/$PROJECT_ID/prolio-api:latest']
-
   - name: 'gcr.io/cloud-builders/docker'
     args: ['pull', 'gcr.io/$PROJECT_ID/prolio-texify:latest']
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['pull', 'gcr.io/$PROJECT_ID/prolio-web:latest']
-
   # Build most recent change
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/prolio-web:latest',
+      '--build-arg', '',
+      'web/'
+    ]
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
@@ -21,12 +26,6 @@ steps:
       'build',
       '-t', 'gcr.io/$PROJECT_ID/prolio-texify:latest',
       'texify/'
-    ]
-  - name: 'gcr.io/cloud-builders/docker'
-    args: [
-      'build',
-      '-t', 'gcr.io/$PROJECT_ID/prolio-web:latest',
-      'web/'
     ]
 
   # Push to GCR
@@ -40,11 +39,11 @@ steps:
   # Deploy to App Engine Flexible
   # Web is the "default" service so deploy this to App Engine first
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy', 'web/app.yaml', '--quiet']
+    args: ['app', 'deploy', 'web/app.yaml', '--quiet', '--image-url=gcr.io/prolio-resume/prolio-web:latest']
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy', 'api/app.yaml', '--quiet']
+    args: ['app', 'deploy', 'api/app.yaml', '--quiet', '--image-url=gcr.io/prolio-resume/prolio-api:latest']
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['app', 'deploy', 'texify/app.yaml', '--quiet']
+    args: ['app', 'deploy', 'texify/app.yaml', '--quiet', '--image-url=gcr.io/prolio-resume/prolio-texify:latest']
 
 images:
   - 'gcr.io/$PROJECT_ID/prolio-api:latest'

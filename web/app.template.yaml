@@ -1,0 +1,7 @@
+runtime: custom
+env: flex
+# Set web as the default service
+service: default
+
+env_variables:
+  NODE_ENV: production

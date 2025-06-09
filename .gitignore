@@ -84,3 +84,6 @@ pip-wheel-metadata/
 
 # ignore migrations
 migrations/
+
+app.yaml
+gcs-access-key.json
