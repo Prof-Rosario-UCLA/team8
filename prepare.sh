@@ -25,6 +25,7 @@ done
 # Find and replace $SERVER_URL for web in cloudbuild.yaml
 sed "s|\$SERVER_URL|${SERVER_URL}|g" cloudbuild.template.yaml > cloudbuild.yaml;
 
+# Make sure no app.yaml files are missing
 for SERVICE in "${SERVICES[@]}"; do
     if [[ ! -f "$SERVICE/app.yaml" ]]; then
         echo "Missing $SERVICE/app.yaml";
@@ -34,11 +35,3 @@ done
 
 # Run Cloud Build
 # gcloud builds submit --config=cloudbuild.yaml .;
-
-# Remove all app.yaml files
-# for SERVICE in "${SERVICES[@]}"; do
-#     rm "$SERVICE/app.yaml";
-# done
-
-# Remove cloudbuild.yaml
-# rm cloudbuild.yaml;

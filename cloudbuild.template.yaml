@@ -1,3 +1,6 @@
+# TODO(bliutech): refactor this into separate cloudbuild.yaml files
+# that only run when that service within the code base updates.
+# Can also update each service in parallel.
 steps:
   # Pull latest version of images for caching
   - name: 'gcr.io/cloud-builders/docker'

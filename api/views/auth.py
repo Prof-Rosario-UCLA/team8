@@ -110,8 +110,8 @@ def login():
         if request.headers.get("X-Forwarded-Host")
         else request.base_url
     )
-    current_app.logger.info(base_url)
-    current_app.logger.info(request.headers.get("X-Forwarded-Host"))
+    current_app.logger.debug(base_url)
+    current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         base_url = base_url.replace("http://", "https://")
     request_uri = client.prepare_request_uri(
@@ -127,6 +127,7 @@ def login():
 def callback():
     # Get authorization code Google sent back to you
     code = request.args.get("code")
+    current_app.logger.debug(code)
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
@@ -135,13 +136,18 @@ def callback():
 
     AUTHORIZATION_URL=request.url
     REDIRECT_URL=request.base_url
+    current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
+    current_app.logger.debug(request.base_url)
+    if request.headers.get("X-Forwarded-Host"):
+        REDIRECT_URL=request.headers.get("X-Forwarded-Host")
+        AUTHORIZATION_URL=AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
 
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         AUTHORIZATION_URL = AUTHORIZATION_URL.replace("http://", "https://")
         REDIRECT_URL = REDIRECT_URL.replace("http://", "https://")
 
-    current_app.logger.info("AUTHORIZATION_URL", AUTHORIZATION_URL)
-    current_app.logger.info("REDIRECT_URL", REDIRECT_URL)
+    current_app.logger.debug("AUTHORIZATION_URL " + AUTHORIZATION_URL)
+    current_app.logger.debug("REDIRECT_URL " + REDIRECT_URL)
     # Prepare and send a request to get tokens! Yay tokens!
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
@@ -158,7 +164,7 @@ def callback():
 
     # Parse the tokens!
     res = json.dumps(token_response.json())
-    current_app.logger.info(res)
+    current_app.logger.debug(res)
     client.parse_request_body_response(res)
 
     # Now that you have tokens (yay) let's find and hit the URL
@@ -168,7 +174,7 @@ def callback():
     uri, headers, body = client.add_token(userinfo_endpoint)
     userinfo_response = requests.get(uri, headers=headers, data=body)
     res = userinfo_response.json()
-    current_app.logger.info(res)
+    current_app.logger.debug(res)
 
     # You want to make sure their email is verified.
     # The user authenticated with Google, authorized your

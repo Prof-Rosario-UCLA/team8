@@ -8,10 +8,17 @@ from db import db, init_db
 
 from flask_login import LoginManager
 
+import logging
+
 # Load environment variables from .env file if it exists in the 'api' directory
 load_dotenv(".flaskenv")
 
 app = Flask(__name__)
+# https://stackoverflow.com/questions/26578733/why-is-flask-application-not-creating-any-logs-when-hosted-by-gunicorn
+gunicorn_error_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers.extend(gunicorn_error_logger.handlers)
+app.logger.setLevel(logging.DEBUG)
+
 # --- CORS Configuration ---
 CLIENT_ORIGIN = os.environ.get("CLIENT_ORIGIN") or "http://localhost:3000"
 # Allow requests from your Next.js development server (default port 3000)
@@ -21,8 +28,8 @@ CORS(app, resources={r"/api/*": {"origins": CLIENT_ORIGIN}})
 # Database Configuration
 # Using PostgreSQL
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
-)
+    "DATABASE_URL"
+) or "sqlite:///:memory:"
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
