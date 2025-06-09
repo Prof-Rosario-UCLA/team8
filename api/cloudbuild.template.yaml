@@ -23,3 +23,6 @@ steps:
   # Deploy to App Engine Flexible
   - name: 'gcr.io/cloud-builders/gcloud'
     args: ['app', 'deploy', 'app.yaml', '--quiet', '--image-url=gcr.io/prolio-resume/prolio-api:latest']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
