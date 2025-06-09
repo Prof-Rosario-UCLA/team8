@@ -1,61 +1,61 @@
-name: API CI/CD
+# name: API CI/CD
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'api/**'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'api/**'
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - 'api/**'
+#   pull_request:
+#     branches:
+#       - main
+#     paths:
+#       - 'api/**'
 
-jobs:
-  ci:
-    name: API CI
-    runs-on: ubuntu-latest
+# jobs:
+#   ci:
+#     name: API CI
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.11'
 
-      - name: Install Ruff
-        run: pip install ruff
+#       - name: Install Ruff
+#         run: pip install ruff
 
-      - name: Run Ruff on api/
-        run: ruff format --check api/
-  cd:
-    name: API CD
-    runs-on: ubuntu-latest
-    needs: ci
+#       - name: Run Ruff on api/
+#         run: ruff format --check api/
+#   cd:
+#     name: API CD
+#     runs-on: ubuntu-latest
+#     needs: ci
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
       
-      - name: Generate .env
-        run: echo "${{ secrets.ENV }}" > .env
+#       - name: Generate .env
+#         run: echo "${{ secrets.ENV }}" > .env
       
-      - name: Generate gcs-access-key.json
-        run: echo '${{ secrets.GCP_SA_KEY }}' > texify/gcs-access-key.json
+#       - name: Generate gcs-access-key.json
+#         run: echo '${{ secrets.GCP_SA_KEY }}' > texify/gcs-access-key.json
 
-      - name: Run prepare.sh
-        run: bash ./prepare.sh
+#       - name: Run prepare.sh
+#         run: bash ./prepare.sh
 
-      - name: Set up Google Cloud CLI
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+#       - name: Set up Google Cloud CLI
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Run Cloud Build for Texify
-        run: |
-          gcloud builds submit api/ --config=api/cloudbuild.yaml --project=$PROJECT_ID
-        env:
-          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#       - name: Run Cloud Build for Texify
+#         run: |
+#           gcloud builds submit api/ --config=api/cloudbuild.yaml --project=$PROJECT_ID
+#         env:
+#           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
