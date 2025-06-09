@@ -1,0 +1,40 @@
+name: Web CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+
+jobs:
+  lint-and-build:
+    name: Lint and Build Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: web
+        run: npm run lint
+
+      - name: Build Next.js app
+        working-directory: web
+        run: npm run build

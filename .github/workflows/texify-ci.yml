@@ -1,20 +1,20 @@
-name: API CI
+name: Texify CI
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'api/**'
+      - 'texify/**'
   pull_request:
     branches:
       - main
     paths:
-      - 'api/**'
+      - 'texify/**'
 
 jobs:
   lint:
-    name: Lint API with Ruff
+    name: Lint Texify with Ruff
     runs-on: ubuntu-latest
 
     steps:
@@ -29,5 +29,5 @@ jobs:
       - name: Install Ruff
         run: pip install ruff
 
-      - name: Run Ruff on api/
-        run: ruff format --check api/
+      - name: Run Ruff on texify/
+        run: ruff format --check texify/
