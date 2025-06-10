@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ResumeSection from "@/components/resume/ResumeSectionCard";
 import { Button } from "@/components/ui/button";
 import { EyeIcon, SaveIcon } from "lucide-react";
@@ -26,7 +26,7 @@ function useResumeEditor(resumeId: string) {
   const [isCompiling, setIsCompiling] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const startCompilation = async () => {
+  const startCompilation = useCallback(async () => {
     if (!resumeId) return;
     
     setIsCompiling(true);
@@ -70,7 +70,7 @@ function useResumeEditor(resumeId: string) {
       console.error("Error during compilation process:", error);
       setIsCompiling(false);
     }
-  };
+  }, [resumeId]);
 
   useEffect(() => {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
@@ -145,7 +145,7 @@ function useResumeEditor(resumeId: string) {
     };
 
     loadResume();
-  }, [resumeId]);
+  }, [resumeId, startCompilation]);
 
   const addItemToSection = (sectionId: string | number) => {
     if (!resume) return;
