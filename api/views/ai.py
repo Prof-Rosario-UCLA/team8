@@ -49,6 +49,7 @@ GENERATION_CONFIG = GenerationConfig(
 )
 
 
+
 # --- Flask Blueprint ---
 
 ai_views = Blueprint("ai_views", __name__, url_prefix="/ai")
@@ -84,7 +85,7 @@ def rate_resume(resume_id: int):
         prompt = (
             f"Please analyze and rate the following resume:\n\n{resume_json_string}"
         )
-
+        
         # Initialize the Gemini model.
         gemini_model = genai.GenerativeModel(
             model_name="gemini-1.5-flash-latest",
@@ -92,16 +93,12 @@ def rate_resume(resume_id: int):
             generation_config=GENERATION_CONFIG,
         )
 
-        response = gemini_model.generate_content(
-            prompt
-        )  # TODO: make async, but will probably need to change gunicorn to uvicorn
+        response = gemini_model.generate_content(prompt) # TODO: make async, but will probably need to change gunicorn to uvicorn
 
         # UPDATE: Modern best practice is to check the prompt_feedback for safety blocks
         # instead of relying solely on a broad StopCandidateException.
         if response.prompt_feedback.block_reason:
-            current_app.logger.error(
-                f"Error: Model response was blocked. Reason: {response.prompt_feedback.block_reason.name}"
-            )
+            current_app.logger.error(f"Error: Model response was blocked. Reason: {response.prompt_feedback.block_reason.name}")
             return jsonify(
                 {
                     "error": "The resume could not be processed due to a content policy violation."
