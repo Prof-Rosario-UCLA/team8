@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { HomeIcon, LayoutDashboardIcon, FileTextIcon } from "lucide-react"
+import { HomeIcon, LayoutDashboardIcon } from "lucide-react"
 import Image from "next/image"
 
 export default function Navbar() {

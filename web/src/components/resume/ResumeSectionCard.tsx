@@ -3,7 +3,7 @@ import { ResumeItemType } from "@/lib/types/Resume";
 import ResumeItemCard from "./ResumeItemCard";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronUpIcon, ChevronDownIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 interface ResumeSectionProps {
   title: string;
@@ -33,10 +33,10 @@ export default function ResumeSection({
   resumeItems, 
   className,
   compact = false,
-  onMoveUp,
-  onMoveDown,
-  isFirst,
-  isLast,
+  // onMoveUp,
+  // onMoveDown,
+  // isFirst,
+  // isLast,
   onMoveItemUp,
   onMoveItemDown,
   onAddItem,

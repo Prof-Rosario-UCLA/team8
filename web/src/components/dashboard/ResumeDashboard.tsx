@@ -26,24 +26,27 @@ export default function ResumeDashboard() {
   const [isCreating, setIsCreating] = useState<boolean>(false)
   const [resumeToDelete, setResumeToDelete] = useState<ResumeType | null>(null)
   
-  const fetchResumes = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/resume/all')
-      if (!response.ok) {
-        throw new Error('Failed to fetch resumes');
+  useEffect(() => {
+    const fetchResumes = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/resume/all');
+        if (!response.ok) {
+          throw new Error('Failed to fetch resumes');
+        }
+        const data = await response.json();
+        
+        // Use the centralized utility to parse dates in the entire resumes array
+        setResumes(parseDates(data.resumes) as ResumeType[]);
+      } catch (error) {
+        console.error("Error fetching resumes:", error);
+      } finally {
+        setIsLoading(false);
       }
-      const data = await response.json()
-      
-      // Use the centralized utility to parse dates in the entire resumes array
-      setResumes(parseDates(data.resumes) as ResumeType[])
-
-    } catch (error) {
-      console.error("Error fetching resumes:", error);
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    };
+    
+    fetchResumes();
+  }, []);
   
   const handleCreateResume = async () => {
     setIsCreating(true);
@@ -79,10 +82,6 @@ export default function ResumeDashboard() {
       setResumeToDelete(null); // Close the dialog
     }
   };
-
-  useEffect(() => {
-      fetchResumes()
-  }, [])
 
   if (isLoading) {
     return <LoadingPage />
