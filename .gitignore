@@ -87,5 +87,5 @@ gcs-access-key.json
 cloudbuild.yaml
 
 # Serwist
-public/sw*
-public/swe-worker*
+sw.js
+swe-worker*.js
