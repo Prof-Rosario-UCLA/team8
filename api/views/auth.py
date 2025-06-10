@@ -110,9 +110,8 @@ def login():
         base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
     # TODO(bliutech): add some more checks here to prevent open redirect
     if request.headers.get("Referer"):
-        base_url = (
-            os.environ.get("CLIENT_ORIGIN", "http://localhost:3000") + request.path
-        )
+        u = urlparse(request.headers.get("Referer"))
+        base_url = u.scheme + "://" + u.netloc + request.path
     current_app.logger.debug(base_url)
     current_app.logger.debug(request.headers)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
@@ -135,6 +134,8 @@ def callback():
     # Get authorization code Google sent back to you
     code = request.args.get("code")
     current_app.logger.debug(code)
+
+    current_app.logger.debug(request.headers)
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
@@ -231,14 +232,15 @@ def callback():
     if state:
         next_url = state.get("next")
 
+    current_app.logger.debug(next_url)
+
     # TODO: check if we need a 307 redirect instead
     # https://stackoverflow.com/questions/32133910/how-redirect-with-args-for-view-function-without-query-string-on-flask
     if next_url and is_safe_url(next_url):
         return redirect(next_url)
 
     # Send user back to homepage
-    base = "/api" if request.headers.get("X-Forwarded-Host") else ""
-    return redirect(base + url_for("main_view.auth_view.index"))
+    return redirect("/")
 
 
 @auth_view.route("/logout")
