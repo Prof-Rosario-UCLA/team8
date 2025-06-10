@@ -28,6 +28,49 @@ function useResumeEditor(resumeId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+
+  const startCompilation = async () => {
+    if (!resumeId) return;
+    
+    setIsCompiling(true);
+
+    try {
+      const compileResponse = await fetch(`/api/compile/${resumeId}`, { method: 'POST' });
+      if (!compileResponse.ok) throw new Error("Failed to start compilation");
+      
+      const { task_id } = await compileResponse.json();
+      
+      const poll = async () => {
+        const statusResponse = await fetch(`/api/compile/status/${task_id}`);
+        if (!statusResponse.ok) {
+          // Stop polling on server error
+          clearInterval(intervalId);
+          setIsCompiling(false);
+          return;
+        }
+
+        const result = await statusResponse.json();
+        
+        if (result.status === 'completed') {
+          setPdfUrl(result.url);
+          setIsCompiling(false);
+          clearInterval(intervalId);
+        } else if (result.status === 'failed') {
+          console.error("PDF Compilation failed:", result.error);
+          setIsCompiling(false);
+          clearInterval(intervalId);
+        }
+        // If 'pending', do nothing and let it poll again
+      };
+
+      const intervalId = setInterval(poll, 2000); // Poll every 2 seconds
+    } catch (error) {
+      console.error("Error during compilation process:", error);
+      setIsCompiling(false);
+    }
+  };
 
   useEffect(() => {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
@@ -63,6 +106,7 @@ function useResumeEditor(resumeId: string) {
         const resumeDataWithDates = parseDates(data) as ResumeType;
         
         setResume(resumeDataWithDates);
+        startCompilation(); // Initial compilation
       } catch (error) {
         console.error("Error loading resume:", error);
         // Handle error state in UI, e.g., show a notification
@@ -322,6 +366,7 @@ function useResumeEditor(resumeId: string) {
         const resumeDataWithDates = parseDates(data) as ResumeType;
         setResume(resumeDataWithDates);
         setHasUnsavedChanges(false);
+        startCompilation(); // Re-compile after a successful save
       }
     } catch (error) {
       console.error("Fetch failed. The service worker will handle retrying.", error);
@@ -347,6 +392,8 @@ function useResumeEditor(resumeId: string) {
     updateUserInfo,
     updateResumeName,
     syncMessage,
+    pdfUrl,
+    isCompiling,
   };
 }
 
@@ -376,7 +423,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     );
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage } = resumeEditor;
+  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling } = resumeEditor;
 
   // Split view: editor on left, preview on right
   const leftPanel = (
@@ -474,63 +521,85 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
   // Right panel WILL be an iframe of the latex resume pdf, currently just placeholder html elements
   const rightPanel = (
-    <section className="w-1/2 bg-white overflow-auto hidden md:block">
+    <section className="w-1/2 bg-gray-100 overflow-auto hidden md:block">
       {/* Preview Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
         <div className="flex items-center gap-2">
           <EyeIcon className="h-5 w-5 text-gray-600" />
           <h2 className="text-lg font-medium text-gray-900">Resume Preview</h2>
+          {isCompiling && <span className="text-xs text-gray-500 ml-2">(Compiling...)</span>}
         </div>
       </header>
-
-      {/* Preview Content - Future: Replace with actual resume template */}
-      <div className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">{resume.name.replace("'s Resume", "")}</h1>
-            <div className="text-sm text-gray-600 mt-2 space-y-1">
-              <p>{resume.email} • {resume.phone}</p>
-              <p>{resume.linkedin} • {resume.github}</p>
-              {resume.website && <p>{resume.website}</p>}
+      
+      <div className="p-2 h-full">
+        {pdfUrl ? (
+          <iframe src={pdfUrl} className="w-full h-full border-none" title="Resume Preview"></iframe>
+        ) : (
+          <div className="flex items-center justify-center h-full bg-white rounded-md">
+            <div className="text-center">
+              {isCompiling ? (
+                <>
+                  <LoadingPage message="Generating PDF preview..." />
+                </>
+              ) : (
+                <p className="text-gray-500">Save your resume to see the preview.</p>
+              )}
             </div>
           </div>
-
-          {resume.sections.map((section) => (
-            <div key={section.id} className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-300 pb-1 mb-3">
-                {section.name}
-              </h2>
-              <div className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={item.id} className="text-sm">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-medium text-gray-800">{item.title}</h3>
-                      {item.start_date && (
-                        <span className="text-gray-600 text-xs">
-                          {item.start_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                          {item.end_date ? ` - ${item.end_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ' - Present'}
-                        </span>
-                      )}
-                    </div>
-                    {item.organization && (
-                      <div className="text-gray-600 text-xs mb-1">
-                        {item.organization}{item.location && ` • ${item.location}`}
-                      </div>
-                    )}
-                    {item.description && (
-                      <p className="text-gray-700 text-xs leading-relaxed whitespace-pre-line">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        )}
       </div>
     </section>
   );
+
+  // old preview for debugging
+  // const oldPreview = (
+  //   <div className="p-6">
+  //     {/* Preview Content - Future: Replace with actual resume template */}
+  //     <div className="max-w-2xl mx-auto">
+  //       <div className="text-center mb-8">
+  //         <h1 className="text-2xl font-bold text-gray-900">{resume.name.replace("'s Resume", "")}</h1>
+  //         <div className="text-sm text-gray-600 mt-2 space-y-1">
+  //           <p>{resume.email} • {resume.phone}</p>
+  //           <p>{resume.linkedin} • {resume.github}</p>
+  //           {resume.website && <p>{resume.website}</p>}
+  //         </div>
+  //       </div>
+
+  //       {resume.sections.map((section) => (
+  //         <div key={section.id} className="mb-6">
+  //           <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-300 pb-1 mb-3">
+  //             {section.name}
+  //           </h2>
+  //           <div className="space-y-3">
+  //             {section.items.map((item) => (
+  //               <div key={item.id} className="text-sm">
+  //                 <div className="flex justify-between items-start mb-1">
+  //                   <h3 className="font-medium text-gray-800">{item.title}</h3>
+  //                   {item.start_date && (
+  //                     <span className="text-gray-600 text-xs">
+  //                       {item.start_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+  //                       {item.end_date ? ` - ${item.end_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ' - Present'}
+  //                     </span>
+  //                   )}
+  //                 </div>
+  //                 {item.organization && (
+  //                   <div className="text-gray-600 text-xs mb-1">
+  //                     {item.organization}{item.location && ` • ${item.location}`}
+  //                   </div>
+  //                 )}
+  //                 {item.description && (
+  //                   <p className="text-gray-700 text-xs leading-relaxed whitespace-pre-line">
+  //                     {item.description}
+  //                   </p>
+  //                 )}
+  //               </div>
+  //             ))}
+  //           </div>
+  //         </div>
+  //       ))}
+  //     </div>
+  //   </div>
+  // );
 
   return (
     <section className="flex h-full">

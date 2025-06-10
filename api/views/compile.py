@@ -11,7 +11,7 @@ import requests
 
 compile_view = Blueprint("compile_view", __name__, url_prefix="/compile")
 
-TEXIFY_URL = "http://localhost:9090"
+TEXIFY_URL = "http://texify:8080"
 
 
 @compile_view.post("/<int:resume_id>")
@@ -26,9 +26,9 @@ def compile_resume(resume_id: int):
     template = get_template(template_id)
     if not template:
         return {"error": "Template not found"}, 404
-
+      
     r = requests.post(
-        TEXIFY_URL + "/",
+        TEXIFY_URL + "/compile",
         json={
             "template": template.get("uri", ""),
             "data": result.json(),
@@ -41,6 +41,6 @@ def compile_resume(resume_id: int):
 @compile_view.get("/status/<job_id>")
 @login_required
 def check_status(job_id: str):
-    r = requests.get(TEXIFY_URL + "/" + job_id)
-    print(r)
+    r = requests.get(TEXIFY_URL + "/status/" + job_id)
+    
     return r.json()

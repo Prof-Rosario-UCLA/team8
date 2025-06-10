@@ -66,8 +66,6 @@ export default function ResumeItemCard({
 
   const layout = getLayoutClasses()
 
-  console.log("From ResumeItemCard", isSkill)
-
   return (
     <Card className={cn(layout.container, "w-full border border-gray-200", className)}>
       <CardContent className={layout.content}>
