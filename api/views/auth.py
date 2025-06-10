@@ -110,9 +110,7 @@ def login():
         base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
     # TODO(bliutech): add some more checks here to prevent open redirect
     if request.headers.get("Referer"):
-        base_url = (
-            os.environ.get("CLIENT_ORIGIN", "http://localhost:3000") + request.path
-        )
+        base_url = request.headers.get("Referer") + request.path
     current_app.logger.debug(base_url)
     current_app.logger.debug(request.headers)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
