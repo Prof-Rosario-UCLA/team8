@@ -16,4 +16,6 @@ ENV SERVER_URL=$SERVER_URL
 
 RUN npm run build
 
-CMD ["npm", "start"]
+ENV PORT=8080
+
+CMD ["node", ".next/standalone/server.js"]

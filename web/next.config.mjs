@@ -3,6 +3,7 @@ import serwist from "@serwist/next";
 /** @type {import('next').NextConfig} */
 export const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   // Add or modify the rewrites configuration
   async rewrites() {
     const baseUrl = process.env.SERVER_URL || 'http://127.0.0.1:5001';
