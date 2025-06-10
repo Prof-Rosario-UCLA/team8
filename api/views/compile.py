@@ -11,12 +11,12 @@ from controllers.template import get_template
 from models.user import User
 import requests
 
-compile_view = Blueprint("compile_view", __name__, url_prefix="/compile")
+compile_views = Blueprint("compile_views", __name__, url_prefix="/compile")
 
 TEXIFY_URL = os.environ.get("TEXIFY_URL") or "http://texify:8080"
 
 
-@compile_view.post("/<int:resume_id>")
+@compile_views.post("/<int:resume_id>")
 @login_required
 def compile_resume(resume_id: int):
     assert isinstance(current_user, User)
@@ -40,7 +40,7 @@ def compile_resume(resume_id: int):
     return r.json()
 
 
-@compile_view.get("/status/<job_id>")
+@compile_views.get("/status/<job_id>")
 @login_required
 def check_status(job_id: str):
     r = requests.get(TEXIFY_URL + "/status/" + job_id)

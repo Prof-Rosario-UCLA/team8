@@ -1,7 +1,12 @@
-from flask import Flask, Blueprint, jsonify
-from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+
+# load env before importing views
+# load_dotenv(".flaskenv", override=True)
+load_dotenv(".env")
+
+from flask import Flask, Blueprint, jsonify
+from flask_cors import CORS
 
 from flask_migrate import Migrate
 from db import db, init_db
@@ -10,15 +15,14 @@ from flask_login import LoginManager
 
 import logging
 
+
 from views.auth import auth_view
 from views.resume import resume_views
 from views.template import template_views
 from views.user import user_views
-from views.compile import compile_view
+from views.compile import compile_views
+from views.ai import ai_views
 
-# Load environment variables from .env file if it exists in the 'api' directory
-# load_dotenv(".flaskenv", override=True)
-load_dotenv(".env")
 
 app = Flask(__name__)
 # https://stackoverflow.com/questions/26578733/why-is-flask-application-not-creating-any-logs-when-hosted-by-gunicorn
@@ -66,7 +70,8 @@ main_view.register_blueprint(auth_view)
 main_view.register_blueprint(resume_views)
 main_view.register_blueprint(template_views)
 main_view.register_blueprint(user_views)
-main_view.register_blueprint(compile_view)
+main_view.register_blueprint(compile_views)
+main_view.register_blueprint(ai_views)
 
 app.register_blueprint(main_view)
 

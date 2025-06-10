@@ -21,6 +21,7 @@ services:
       - FLASK_APP=app
       - FLASK_DEBUG=1
       - DATABASE_URL=${DATABASE_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OAUTHLIB_INSECURE_TRANSPORT=1
       - GOOGLE_DISCOVERY_URL=http://oauth:9000/.well-known/openid-configuration
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
