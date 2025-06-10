@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import ResumeSection from "@/components/resume/ResumeSectionCard";
 import { Button } from "@/components/ui/button";
-import { EyeIcon, SaveIcon } from "lucide-react";
+import { EyeIcon, SaveIcon, SparklesIcon } from "lucide-react";
 import { ResumeItemType, ResumeSectionType, ResumeType, ORDERED_SECTION_TYPES, SECTION_TYPE_DISPLAY_NAME_MAP, ResumeUpdatePayload } from "@/lib/types/Resume";
 import LoadingPage from "@/components/loading/Loading";
+import LoadingSpinner from "@/components/loading/LoadingSpinner";
 import LabelledInput from "@/components/ui/LabelledInput";
 import { Input } from "@/components/ui/input";
 import { parseDates } from "@/lib/utils/date";
@@ -15,6 +16,7 @@ import { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import UserInfoCard from "@/components/resume/UserInfoCard";
 import { cn } from "@/lib/utils";
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
@@ -25,6 +27,9 @@ function useResumeEditor(resumeId: string) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [ratingData, setRatingData] = useState<{ rating: number; reasoning: string; error?: string } | null>(null);
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
 
   const startCompilation = useCallback(async () => {
     if (!resumeId) return;
@@ -385,6 +390,30 @@ function useResumeEditor(resumeId: string) {
     }
   };
 
+  const getAIRating = useCallback(async () => {
+    if (!resumeId) return;
+
+    setIsRatingLoading(true);
+    setRatingData(null);
+    setIsRatingModalOpen(true);
+
+    try {
+      const response = await fetch(`/api/ai/rate/${resumeId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get AI rating.');
+      }
+
+      setRatingData(data);
+    } catch (error) {
+      console.error("Error fetching AI rating:", error);
+      setRatingData({ rating: 0, reasoning: '', error: error instanceof Error ? error.message : "An unknown error occurred." });
+    } finally {
+      setIsRatingLoading(false);
+    }
+  }, [resumeId]);
+
   return {
     resume,
     isLoading,
@@ -401,6 +430,11 @@ function useResumeEditor(resumeId: string) {
     pdfUrl,
     isCompiling,
     saveError,
+    isRatingModalOpen,
+    setIsRatingModalOpen,
+    ratingData,
+    isRatingLoading,
+    getAIRating,
   };
 }
 
@@ -430,7 +464,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     );
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderItem, addItemToSection, deleteItemFromSection, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling, saveError } = resumeEditor;
+  const { resume, hasUnsavedChanges, saveResume, reorderItem, addItemToSection, deleteItemFromSection, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling, saveError, getAIRating, isRatingLoading, ratingData, isRatingModalOpen, setIsRatingModalOpen } = resumeEditor;
 
   // Split view: editor on left, preview on right
   const leftPanel = (
@@ -446,7 +480,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
               input={<Input id="resume_name" value={resume.resume_name} onChange={(e) => updateResumeName(e.target.value)} />}
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -456,6 +490,16 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             >
               <SaveIcon className="h-4 w-4" />
               {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={getAIRating}
+              disabled={isRatingLoading}
+              className="flex items-center gap-2"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              {isRatingLoading ? 'Rating...' : 'Rate with AI'}
             </Button>
           </div>
         </div>
@@ -535,30 +579,74 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
   );
 
   return (
-    <section className="flex h-full">
-      <div className={cn(
-          "relative h-full transition-all duration-300 ease-in-out w-0 border-r border-gray-200",
-          isTocOpen ? "md:w-64" : "md:w-10"
-      )}>
-        {isTocOpen && <ResumeTOC resume={resume} handleDragEnd={handleDragEnd} />}
-        <Button
-            onClick={() => setIsTocOpen(!isTocOpen)}
-            variant="outline"
-            size="icon"
-            className="absolute top-1/2 z-30 bg-white rounded-full shadow-md h-8 w-8 hidden md:flex"
-            style={{
-              right: isTocOpen ? '-16px' : undefined,
-              left: isTocOpen ? undefined : '50%',
-              transform: isTocOpen ? 'translateY(-50%)' : 'translate(-50%, -50%)',
-            }}
-          >
-            {isTocOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </Button>
-      </div>
-      <div className="flex-1 flex">
-        {leftPanel}
-        {rightPanel}
-      </div>
-    </section>
+    <>
+      <section className="flex h-full">
+        <div className={cn(
+            "relative h-full transition-all duration-300 ease-in-out w-0 border-r border-gray-200",
+            isTocOpen ? "md:w-64" : "md:w-10"
+        )}>
+          {isTocOpen && <ResumeTOC resume={resume} handleDragEnd={handleDragEnd} />}
+          <Button
+              onClick={() => setIsTocOpen(!isTocOpen)}
+              variant="outline"
+              size="icon"
+              className="absolute top-1/2 z-30 bg-white rounded-full shadow-md h-8 w-8 hidden md:flex"
+              style={{
+                right: isTocOpen ? '-16px' : undefined,
+                left: isTocOpen ? undefined : '50%',
+                transform: isTocOpen ? 'translateY(-50%)' : 'translate(-50%, -50%)',
+              }}
+            >
+              {isTocOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+        </div>
+        <div className="flex-1 flex">
+          {leftPanel}
+          {rightPanel}
+        </div>
+      </section>
+      <AlertDialog open={isRatingModalOpen} onOpenChange={setIsRatingModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isRatingLoading
+                ? "Analyzing..."
+                : ratingData?.error
+                ? "Error"
+                : "AI Resume Rating"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="pt-4">
+                {isRatingLoading ? (
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <LoadingSpinner message="Our AI is analyzing your resume..." />
+                  </div>
+                ) : ratingData?.error ? (
+                  <p>{ratingData.error}</p>
+                ) : ratingData ? (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Overall Score</p>
+                      <p className="text-7xl font-bold text-gray-900">{ratingData.rating}<span className="text-3xl text-muted-foreground">/10</span></p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Reasoning</p>
+                      <div className="max-h-60 overflow-y-auto rounded-md border bg-gray-50 p-3 text-sm text-gray-700">
+                        {ratingData.reasoning}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p>No rating information available.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

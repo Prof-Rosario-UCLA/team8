@@ -18,12 +18,12 @@ export default function Home() {
             .then(data => setIsUserLoggedIn(data !== null));
         setIsLoading(false);
     }, []);
-    
+
 
     if (isLoading) {
         return <LoadingPage message="Loading..." />;
     }
-    
+
     return (
         <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
             <section className="w-full max-w-5xl">
@@ -68,11 +68,11 @@ export default function Home() {
                                 <Link href="/api/auth/login?next=/">
                                     <Button
                                         size="lg"
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                >
-                                    Login
-                                </Button>
-                            </Link>
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                        Login
+                                    </Button>
+                                </Link>
                             )}
 
                         </div>
