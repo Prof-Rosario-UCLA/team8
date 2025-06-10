@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -17,6 +17,14 @@
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-popover": "^1.1.14",
     "@radix-ui/react-slot": "^1.2.3",
+    "@serwist/background-sync": "^9.0.14",
+    "@serwist/cacheable-response": "^9.0.14",
+    "@serwist/expiration": "^9.0.14",
+    "@serwist/next": "^9.0.14",
+    "@serwist/precaching": "^9.0.14",
+    "@serwist/routing": "^9.0.14",
+    "@serwist/strategies": "^9.0.14",
+    "@serwist/sw": "^9.0.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -26,6 +34,7 @@
     "react": "^19.0.0",
     "react-day-picker": "^9.7.0",
     "react-dom": "^19.0.0",
+    "serwist": "^9.0.14",
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {

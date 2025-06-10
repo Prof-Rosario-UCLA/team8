@@ -1,32 +1,47 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import ResumeSection from "@/components/resume/ResumeSectionCard"
-import { Button } from "@/components/ui/button"
-import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react"
-import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES, ResumeUpdatePayload } from "@/lib/types/Resume"
-import LoadingPage from "@/components/loading/Loading"
-import LabelledInput from "@/components/ui/LabelledInput"
-import { Input } from "@/components/ui/input"
-import { parseDates } from "@/lib/utils/date"
+import { useState, useEffect } from "react";
+import ResumeSection from "@/components/resume/ResumeSectionCard";
+import { Button } from "@/components/ui/button";
+import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react";
+import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES, ResumeUpdatePayload } from "@/lib/types/Resume";
+import LoadingPage from "@/components/loading/Loading";
+import LabelledInput from "@/components/ui/LabelledInput";
+import { Input } from "@/components/ui/input";
+import { parseDates } from "@/lib/utils/date";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
-import ResumeTOC from "@/components/resume/ResumeTOC"
-import { DragEndEvent } from "@dnd-kit/core"
-import { arrayMove } from "@dnd-kit/sortable"
-import UserInfoCard from "@/components/resume/UserInfoCard"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import ResumeTOC from "@/components/resume/ResumeTOC";
+import { DragEndEvent } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
+import UserInfoCard from "@/components/resume/UserInfoCard";
+import { cn } from "@/lib/utils";
 
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
-  const [resume, setResume] = useState<ResumeType | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [resume, setResume] = useState<ResumeType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data.type === "RESUME_SYNC_SUCCESS") {
+        setSyncMessage(event.data.message);
+        setHasUnsavedChanges(false);
+        setTimeout(() => setSyncMessage(null), 5000); // Clear message after 5s
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+    };
+  }, [resumeId]);
 
   useEffect(() => {
     if (!resumeId) {
@@ -35,29 +50,29 @@ function useResumeEditor(resumeId: string) {
     }
 
     const loadResume = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        const response = await fetch(`/api/resume/${resumeId}`) // Adjusted API endpoint
+        const response = await fetch(`/api/resume/${resumeId}`); // Adjusted API endpoint
         if (!response.ok) {
             throw new Error(`Failed to fetch resume: ${response.statusText}`);
         }
-        const data = await response.json()
-        console.log('Resume data received:', data)
+        const data = await response.json();
+        console.log('Resume data received:', data);
 
         // Recursively parse date strings into Date objects
-        const resumeDataWithDates = parseDates(data) as ResumeType
+        const resumeDataWithDates = parseDates(data) as ResumeType;
         
-        setResume(resumeDataWithDates)
+        setResume(resumeDataWithDates);
       } catch (error) {
         console.error("Error loading resume:", error);
         // Handle error state in UI, e.g., show a notification
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadResume()
-  }, [resumeId])
+    loadResume();
+  }, [resumeId]);
 
   const addSection = (sectionType: ResumeSectionItemType) => {
     if (!resume) return;
@@ -140,86 +155,76 @@ function useResumeEditor(resumeId: string) {
       };
     });
     setHasUnsavedChanges(true);
-  }
+  };
 
   const reorderSection = (sectionId: string | number, direction: 'up' | 'down') => {
-    if (!resume) return
+    if (!resume) return;
 
     setResume(prev => {
-      if (!prev) return null
+      if (!prev) return null;
       
-      // Find the section index
-      const sectionIndex = prev.sections.findIndex(section => section.id === sectionId)
-      if (sectionIndex === -1) return prev
+      const sectionIndex = prev.sections.findIndex(section => section.id === sectionId);
+      if (sectionIndex === -1) return prev;
       
-      // Check boundaries
-      if (direction === 'up' && sectionIndex === 0) return prev
-      if (direction === 'down' && sectionIndex === prev.sections.length - 1) return prev
+      if (direction === 'up' && sectionIndex === 0) return prev;
+      if (direction === 'down' && sectionIndex === prev.sections.length - 1) return prev;
       
-      // Create a copy of sections array
-      const newSections = [...prev.sections]
+      const newSections = [...prev.sections];
       
-      // Swap with adjacent section
-      const targetIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1
-      const temp = newSections[targetIndex]
-      newSections[targetIndex] = newSections[sectionIndex]
-      newSections[sectionIndex] = temp
+      const targetIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
+      const temp = newSections[targetIndex];
+      newSections[targetIndex] = newSections[sectionIndex];
+      newSections[sectionIndex] = temp;
       
       return {
         ...prev,
         sections: newSections,
         updated_at: new Date()
-      }
-    })
+      };
+    });
     
-    setHasUnsavedChanges(true)
-  }
+    setHasUnsavedChanges(true);
+  };
 
   const reorderItem = (sectionId: string | number, itemId: string | number, direction: 'up' | 'down') => {
-    if (!resume) return
+    if (!resume) return;
     
     setResume(prev => {
-      if (!prev) return null
+      if (!prev) return null;
       
-      // Find the section
-      const sectionIndex = prev.sections.findIndex(section => section.id === sectionId)
-      if (sectionIndex === -1) return prev
+      const sectionIndex = prev.sections.findIndex(section => section.id === sectionId);
+      if (sectionIndex === -1) return prev;
       
-      const section = prev.sections[sectionIndex]
+      const section = prev.sections[sectionIndex];
       
-      // Find the item index
-      const itemIndex = section.items.findIndex(item => item.id === itemId)
-      if (itemIndex === -1) return prev
+      const itemIndex = section.items.findIndex(item => item.id === itemId);
+      if (itemIndex === -1) return prev;
       
-      // Check boundaries
-      if (direction === 'up' && itemIndex === 0) return prev
-      if (direction === 'down' && itemIndex === section.items.length - 1) return prev
+      if (direction === 'up' && itemIndex === 0) return prev;
+      if (direction === 'down' && itemIndex === section.items.length - 1) return prev;
       
-      // Create a copy of items array
-      const newItems = [...section.items]
+      const newItems = [...section.items];
       
-      // Swap with adjacent item
-      const targetIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1
-      const temp = newItems[targetIndex]
-      newItems[targetIndex] = newItems[itemIndex]
-      newItems[itemIndex] = temp
+      const targetIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
+      const temp = newItems[targetIndex];
+      newItems[targetIndex] = newItems[itemIndex];
+      newItems[itemIndex] = temp;
       
-      // Update the section with new items order
-      const newSections = [...prev.sections]
+      const newSections = [...prev.sections];
       newSections[sectionIndex] = {
         ...section,
         items: newItems
-      }
+      };
       
       return {
         ...prev,
         sections: newSections,
         updated_at: new Date()
-      }
-    })
+      };
+    });
     
-    setHasUnsavedChanges(true)
-  }
+    setHasUnsavedChanges(true);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -234,7 +239,6 @@ function useResumeEditor(resumeId: string) {
             const [activeSectionId, activeItemId] = activeId.split('::');
             const [overSectionId, overItemId] = overId.split('::');
 
-            // For now, only allow reordering within the same section
             if (activeSectionId !== overSectionId) {
                 return prev;
             }
@@ -284,51 +288,49 @@ function useResumeEditor(resumeId: string) {
       return { ...prev, resume_name: name, updated_at: new Date() };
     });
     setHasUnsavedChanges(true);
-  }
+  };
 
   const saveResume = async () => {
-    if (!resume) return
-    
-    // Create a payload with temporary string IDs converted to null
-    const payload: ResumeUpdatePayload = {
-      ...resume,
-      sections: resume.sections.map(section => ({
-        ...section,
-        id: typeof section.id === 'string' ? null : section.id,
-        items: section.items.map(item => ({
-          ...item,
-          id: typeof item.id === 'string' ? null : item.id,
+    if (!resume || !hasUnsavedChanges) return;
+
+    setHasUnsavedChanges(true); // UI shows "saving..." until sync is confirmed.
+
+    try {
+      const payload: ResumeUpdatePayload = {
+        ...resume,
+        sections: resume.sections.map(section => ({
+          ...section,
+          id: typeof section.id === 'string' ? null : section.id,
+          items: section.items.map(item => ({
+            ...item,
+            id: typeof item.id === 'string' ? null : item.id,
+          })),
         })),
-      })),
-    };
-    
-    const response = await fetch(`/api/resume/update/${resume.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-    if (!response.ok) {
-      console.error('Failed to save resume:', response.statusText)
-      // Optionally, show an error message to the user
-      return
+      };
+      
+      const response = await fetch(`/api/resume/update/${resume.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.log("Save request failed but has been queued for background sync.");
+      } else {
+        const data = await response.json();
+        console.log('Resume saved, server response:', data);
+        const resumeDataWithDates = parseDates(data) as ResumeType;
+        setResume(resumeDataWithDates);
+        setHasUnsavedChanges(false);
+      }
+    } catch (error) {
+      console.error("Fetch failed. The service worker will handle retrying.", error);
     }
-
-    // On success, backend returns the full, updated resume object with new IDs.
-    const data = await response.json()
-    console.log('Resume saved, server response:', data)
-
-    // Update the local state with the server's version of the resume
-    const resumeDataWithDates = parseDates(data) as ResumeType
-    setResume(resumeDataWithDates);
-
-    setHasUnsavedChanges(false)
-  }
+  };
 
   const availableSectionTypes = resume 
     ? ALL_SECTION_TYPES.filter(type => !resume.sections.some(s => s.type === type))
-    : []
+    : [];
 
   return {
     resume,
@@ -344,23 +346,24 @@ function useResumeEditor(resumeId: string) {
     handleDragEnd,
     updateUserInfo,
     updateResumeName,
-  }
+    syncMessage,
+  };
 }
 
 export default function ResumeEditorPage({ params }: { params: Promise<{ resume_id: string }> }) {
-  const [resolvedParams, setResolvedParams] = useState<{ resume_id: string } | null>(null)
-  const [isTocOpen, setIsTocOpen] = useState(true)
+  const [resolvedParams, setResolvedParams] = useState<{ resume_id: string } | null>(null);
+  const [isTocOpen, setIsTocOpen] = useState(true);
 
   useEffect(() => {
-    params.then(setResolvedParams)
-  }, [params])
+    params.then(setResolvedParams);
+  }, [params]);
 
-  const resumeEditor = useResumeEditor(resolvedParams?.resume_id || '')
+  const resumeEditor = useResumeEditor(resolvedParams?.resume_id || '');
 
   if (!resolvedParams || resumeEditor.isLoading) {
     return (
       <LoadingPage message="Loading resume editor..." />  
-    )
+    );
   }
 
   if (!resumeEditor.resume) {
@@ -370,10 +373,10 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
           <p className="text-gray-600">Resume not found</p>
         </section>
       </div>
-    )
+    );
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName } = resumeEditor
+  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage } = resumeEditor;
 
   // Split view: editor on left, preview on right
   const leftPanel = (
@@ -402,7 +405,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             </Button>
           </div>
         </div>
-        {hasUnsavedChanges && (
+        {syncMessage && (
+          <div className="mt-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+            {syncMessage}
+          </div>
+        )}
+        {hasUnsavedChanges && !syncMessage && (
           <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
             You have unsaved changes
           </div>
@@ -462,7 +470,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
         )}
       </div>
     </section>
-  )
+  );
 
   // Right panel WILL be an iframe of the latex resume pdf, currently just placeholder html elements
   const rightPanel = (
@@ -522,7 +530,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
         </div>
       </div>
     </section>
-  )
+  );
 
   return (
     <section className="flex h-full">
@@ -550,5 +558,5 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
         {rightPanel}
       </div>
     </section>
-  )
-} 
+  );
+}
