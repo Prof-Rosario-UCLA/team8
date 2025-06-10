@@ -14,9 +14,11 @@ from views.auth import auth_view
 from views.resume import resume_views
 from views.template import template_views
 from views.user import user_views
+from views.compile import compile_view
 
 # Load environment variables from .env file if it exists in the 'api' directory
-load_dotenv(".flaskenv")
+# load_dotenv(".flaskenv", override=True)
+load_dotenv(".env")
 
 app = Flask(__name__)
 # https://stackoverflow.com/questions/26578733/why-is-flask-application-not-creating-any-logs-when-hosted-by-gunicorn
@@ -64,6 +66,7 @@ main_view.register_blueprint(auth_view)
 main_view.register_blueprint(resume_views)
 main_view.register_blueprint(template_views)
 main_view.register_blueprint(user_views)
+main_view.register_blueprint(compile_view)
 
 app.register_blueprint(main_view)
 
