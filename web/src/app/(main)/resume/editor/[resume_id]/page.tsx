@@ -40,7 +40,10 @@ function useResumeEditor(resumeId: string) {
       const compileResponse = await fetch(`/api/compile/${resumeId}`, { method: 'POST' });
       if (!compileResponse.ok) throw new Error("Failed to start compilation");
       
-      const { task_id } = await compileResponse.json();
+      const compileData = await compileResponse.json();
+      console.log("Compile response:", compileData);
+
+      const { task_id } = compileData;
       
       const poll = async () => {
         const statusResponse = await fetch(`/api/compile/status/${task_id}`);
@@ -53,11 +56,13 @@ function useResumeEditor(resumeId: string) {
 
         const result = await statusResponse.json();
         
-        if (result.status === 'completed') {
+        console.log("Poll result:", result);
+
+        if (result.status === 'done') {
           setPdfUrl(result.url);
           setIsCompiling(false);
           clearInterval(intervalId);
-        } else if (result.status === 'failed') {
+        } else if (result.status === 'failure') {
           console.error("PDF Compilation failed:", result.error);
           setIsCompiling(false);
           clearInterval(intervalId);
