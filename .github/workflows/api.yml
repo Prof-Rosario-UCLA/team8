@@ -55,7 +55,7 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Run Cloud Build for Texify
+      - name: Run Cloud Build for API
         run: |
           gcloud builds submit api/ --config=api/cloudbuild.yaml --project=$PROJECT_ID
         env:
