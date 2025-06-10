@@ -110,7 +110,8 @@ def login():
         base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
     # TODO(bliutech): add some more checks here to prevent open redirect
     if request.headers.get("Referer"):
-        base_url = request.headers.get("Referer").rstrip("/") + request.path
+        u = urlparse(request.headers.get("Referer"))
+        base_url = u.scheme + "://" + u.netloc + request.path
     current_app.logger.debug(base_url)
     current_app.logger.debug(request.headers)
     current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
@@ -133,6 +134,8 @@ def callback():
     # Get authorization code Google sent back to you
     code = request.args.get("code")
     current_app.logger.debug(code)
+
+    current_app.logger.debug(request.headers)
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
