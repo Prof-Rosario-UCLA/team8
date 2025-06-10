@@ -85,3 +85,7 @@ pip-wheel-metadata/
 app.yaml
 gcs-access-key.json
 cloudbuild.yaml
+
+# Serwist
+public/sw*
+public/swe-worker*
