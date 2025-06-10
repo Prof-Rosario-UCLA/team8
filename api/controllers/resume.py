@@ -210,11 +210,11 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
     """
     # Validation Checks
     sections_payload = payload.get("sections", [])
-    
+
     # Ensure all section types are present and there are no extras
     payload_section_types = {s.get("section_type") for s in sections_payload}
     all_enum_types = {e.value for e in ResumeItemType}
-    
+
     if payload_section_types != all_enum_types:
         missing = all_enum_types - payload_section_types
         extra = payload_section_types - all_enum_types
@@ -229,7 +229,9 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
     for section_data in sections_payload:
         if not section_data.get("items"):
             section_name = section_data.get("name", "Unnamed")
-            raise ValueError(f"Section '{section_name}' cannot be empty. Please add at least one item.")
+            raise ValueError(
+                f"Section '{section_name}' cannot be empty. Please add at least one item."
+            )
 
     # Update User fields via the relationship
     user_to_update = resume_db.user
@@ -304,7 +306,9 @@ def create_new_resume(user: User, db_session) -> Resume:
     Creates a new resume, fully populated with default sections and a default item for each section.
     """
     # Find a default template
-    default_template = db_session.execute(select(Template).limit(1)).scalar_one_or_none()
+    default_template = db_session.execute(
+        select(Template).limit(1)
+    ).scalar_one_or_none()
     if not default_template:
         raise Exception("No templates found in the system. Cannot create a resume.")
 
@@ -321,74 +325,73 @@ def create_new_resume(user: User, db_session) -> Resume:
         new_name = f"{base_name} ({counter})"
 
     # Create the resume object
-    new_resume = Resume(
-        user_id=user.id,
-        resume_name=new_name,
-        template_id=default_template.id
-    )
+    new_resume = Resume()
+    new_resume.user_id = user.id
+    new_resume.resume_name = new_name
+    new_resume.template_id = default_template.id
     db_session.add(new_resume)
     db_session.flush()  # Flush to get the new_resume.id
 
     # Create a default section and item for each type
-    
-    ordered_section_types = [ResumeItemType.education, ResumeItemType.experience, ResumeItemType.project, ResumeItemType.skill]
-    
+
+    ordered_section_types = [
+        ResumeItemType.education,
+        ResumeItemType.experience,
+        ResumeItemType.project,
+        ResumeItemType.skill,
+    ]
+
     for i, section_type in enumerate(ordered_section_types):
         section_name = SECTION_TYPE_TO_DISPLAY_NAME_MAPPING[section_type]
-        new_section = ResumeSection(
-            user_id=user.id,
-            resume_id=new_resume.id,
-            name=section_name,
-            section_type=section_type,
-            display_order=i
-        )
+        new_section = ResumeSection()
+        new_section.user_id = user.id
+        new_section.resume_id = new_resume.id
+        new_section.name = section_name
+        new_section.section_type = section_type
+        new_section.display_order = i
         db_session.add(new_section)
         db_session.flush()  # Flush to get the new_section.id
 
         if section_type == ResumeItemType.skill:
-            new_item = ResumeItem(
-                user_id=user.id,
-                section_id=new_section.id,
-                title="Skill Category",
-                organization="",
-                start_date=datetime.now(),
-                end_date=None,
-                location="",
-                description="Resume-building, problem-solving, etc"
-            )
+            new_item = ResumeItem()
+            new_item.user_id = user.id
+            new_item.section_id = new_section.id
+            new_item.title = "Skill Category"
+            new_item.organization = ""
+            new_item.start_date = datetime.now()
+            new_item.end_date = None
+            new_item.location = ""
+            new_item.description = "Resume-building, problem-solving, etc"
         elif section_type == ResumeItemType.project:
-            new_item = ResumeItem(
-                user_id=user.id,
-                section_id=new_section.id,
-                title="Project Name",
-                organization="",
-                start_date=datetime.now(),
-                end_date=None,
-                location="",
-                description="Project description"
-            )
+            new_item = ResumeItem()
+            new_item.user_id = user.id
+            new_item.section_id = new_section.id
+            new_item.title = "Project Name"
+            new_item.organization = ""
+            new_item.start_date = datetime.now()
+            new_item.end_date = None
+            new_item.location = ""
+            new_item.description = "Project description"
         elif section_type == ResumeItemType.experience:
-            new_item = ResumeItem(
-                user_id=user.id,
-                section_id=new_section.id,
-                title="Job Title",
-                organization="Company Name",
-                start_date=datetime.now(),
-                end_date=None,
-                location="",
-                description="Job description"
-            )
+            new_item = ResumeItem()
+            new_item.user_id = user.id
+            new_item.section_id = new_section.id
+            new_item.title = "Job Title"
+            new_item.organization = "Company Name"
+            new_item.start_date = datetime.now()
+            new_item.end_date = None
+            new_item.location = ""
+            new_item.description = "Job description"
         elif section_type == ResumeItemType.education:
-            new_item = ResumeItem(
-                user_id=user.id,
-                section_id=new_section.id,
-                title="Degree",
-                organization="University Name",
-                start_date=datetime.now(),
-                end_date=None,
-                location="",
-                description="Degree description"
-            )
+            new_item = ResumeItem()
+            new_item.user_id = user.id
+            new_item.section_id = new_section.id
+            new_item.title = "Degree"
+            new_item.organization = "University Name"
+            new_item.start_date = datetime.now()
+            new_item.end_date = None
+            new_item.location = ""
+            new_item.description = "Degree description"
         else:
             raise ValueError(f"Invalid section type: {section_type}")
 
