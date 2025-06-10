@@ -7,7 +7,7 @@ from models.template import Template
 from flask_login import login_required, current_user
 
 from db import db
-from controllers.resume import process_resume_update, get_full_resume
+from controllers.resume import process_resume_update, get_full_resume, create_new_resume
 
 resume_views = Blueprint("resume_views", __name__, url_prefix="/resume")
 
@@ -46,50 +46,18 @@ def get_resume(id: int):
 @login_required
 def create_resume():
     """
-    Creates a new resume with default values for the current user.
-    It does not require any data in the request body.
+    Creates a new resume with default values for the current user using a controller.
     """
-    # Find a default template to assign to the new resume.
-    default_template = db.session.execute(
-        select(Template).limit(1)
-    ).scalar_one_or_none()
-    if not default_template:
-        return jsonify(
-            {"error": "No templates found in the system. Cannot create a resume."}
-        ), 500
-
-    # Generate a unique default name for the resume (e.g., "Untitled Resume (2)").
-    base_name = "Untitled Resume"
-    existing_names_stmt = select(Resume.resume_name).where(
-        Resume.user_id == current_user.id, Resume.resume_name.like(f"{base_name}%")
-    )
-    existing_names = db.session.execute(existing_names_stmt).scalars().all()
-
-    new_name = base_name
-    counter = 1
-    while new_name in existing_names:
-        counter += 1
-        new_name = f"{base_name} ({counter})"
-
-    # Create the new resume object with the default values.
-    res = Resume()
-    res.user_id = current_user.id
-    res.resume_name = new_name
-    res.template_id = default_template.id
-
-    res.save_to_db()
-    db.session.flush()  # Ensure the new ID is available for get_full_resume
-
-    # Fetch the full resume object to return to the frontend.
-    assert isinstance(current_user, User)
-    new_resume = get_full_resume(res.id, current_user, db.session)
-
-    # Return the new resume object with a 201 Created status code.
-    if new_resume:
+    try:
+        assert isinstance(current_user, User)
+        new_resume = create_new_resume(current_user, db.session)
+        db.session.commit()
+        # The frontend expects the full resume object directly
         return jsonify(new_resume.json()), 201
-    else:
-        # This case should ideally not be reached if creation was successful.
-        return jsonify({"error": "Failed to retrieve the created resume."}), 500
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during resume creation: {e}")
+        return jsonify({"error": f"An unexpected error occurred. {e}"}), 500
 
 
 @resume_views.put("/update/<int:id>")
@@ -107,20 +75,17 @@ def update_resume(id: int):
 
     try:
         process_resume_update(resume_to_update, data, db.session)
-
         db.session.commit()
-
         # Re-fetch the entire resume to get the latest state with new IDs
         assert isinstance(current_user, User)
         updated_resume = get_full_resume(id, current_user, db.session)
-
         if not updated_resume:
-            # This would be unusual, but handle it
             return jsonify({"error": "Could not retrieve updated resume."}), 404
-
         # The frontend expects the resume object directly
         return jsonify(updated_resume.json())
-
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
         print(f"Error during resume update: {e}")

@@ -25,7 +25,7 @@ export interface ResumeItemType {
 export interface ResumeSectionType {
   id: number | string;
   name: string
-  type: ResumeSectionItemType
+  section_type: ResumeSectionItemType
   items: ResumeItemType[] // Array position = display order
 }
 
@@ -35,6 +35,20 @@ export enum ResumeSectionItemType {
   Projects = "project",
   Skills = "skill",
 }
+
+export const ORDERED_SECTION_TYPES = [
+  ResumeSectionItemType.Education,
+  ResumeSectionItemType.Experience,
+  ResumeSectionItemType.Projects,
+  ResumeSectionItemType.Skills,
+];
+
+export const SECTION_TYPE_DISPLAY_NAME_MAP: Record<ResumeSectionItemType, string> = {
+  [ResumeSectionItemType.Education]: "Education",
+  [ResumeSectionItemType.Experience]: "Experience",
+  [ResumeSectionItemType.Projects]: "Projects",
+  [ResumeSectionItemType.Skills]: "Technical Skills",
+};
 
 export const ALL_SECTION_TYPES = [
   ResumeSectionItemType.Education,

@@ -3,9 +3,11 @@ from sqlalchemy.orm import selectinload
 
 from models.resume import Resume, ResumeSection, ResumeItem, ResumeItemType
 from models.user import User
+from models.template import Template
 
 from datetime import datetime, timezone
 
+from models.resume import SECTION_TYPE_TO_DISPLAY_NAME_MAPPING
 
 # TODO(bliutech): refactor core logic from views/resume.py into here
 
@@ -206,6 +208,29 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
     Main controller function to process updates to a resume, including its sections and items.
     Updates are delegated to the user or resume object as appropriate.
     """
+    # Validation Checks
+    sections_payload = payload.get("sections", [])
+    
+    # Ensure all section types are present and there are no extras
+    payload_section_types = {s.get("section_type") for s in sections_payload}
+    all_enum_types = {e.value for e in ResumeItemType}
+    
+    if payload_section_types != all_enum_types:
+        missing = all_enum_types - payload_section_types
+        extra = payload_section_types - all_enum_types
+        error_msg = "Resume must have exactly one of each section type."
+        if missing:
+            error_msg += f" Missing: {', '.join(missing)}."
+        if extra:
+            error_msg += f" Extra: {', '.join(extra)}."
+        raise ValueError(error_msg)
+
+    # Ensure no section is empty
+    for section_data in sections_payload:
+        if not section_data.get("items"):
+            section_name = section_data.get("name", "Unnamed")
+            raise ValueError(f"Section '{section_name}' cannot be empty. Please add at least one item.")
+
     # Update User fields via the relationship
     user_to_update = resume_db.user
     user_to_update.name = payload.get("name", user_to_update.name)
@@ -272,6 +297,104 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
     # Save changes for resume scalars, new/updated sections, items, associations
     # The db_session.commit() will be handled in the view function after this returns.
     return resume_db
+
+
+def create_new_resume(user: User, db_session) -> Resume:
+    """
+    Creates a new resume, fully populated with default sections and a default item for each section.
+    """
+    # Find a default template
+    default_template = db_session.execute(select(Template).limit(1)).scalar_one_or_none()
+    if not default_template:
+        raise Exception("No templates found in the system. Cannot create a resume.")
+
+    # Generate a unique default name
+    base_name = "Untitled Resume"
+    existing_names_stmt = select(Resume.resume_name).where(
+        Resume.user_id == user.id, Resume.resume_name.like(f"{base_name}%")
+    )
+    existing_names = db_session.execute(existing_names_stmt).scalars().all()
+    new_name = base_name
+    counter = 1
+    while new_name in existing_names:
+        counter += 1
+        new_name = f"{base_name} ({counter})"
+
+    # Create the resume object
+    new_resume = Resume(
+        user_id=user.id,
+        resume_name=new_name,
+        template_id=default_template.id
+    )
+    db_session.add(new_resume)
+    db_session.flush()  # Flush to get the new_resume.id
+
+    # Create a default section and item for each type
+    
+    ordered_section_types = [ResumeItemType.education, ResumeItemType.experience, ResumeItemType.project, ResumeItemType.skill]
+    
+    for i, section_type in enumerate(ordered_section_types):
+        section_name = SECTION_TYPE_TO_DISPLAY_NAME_MAPPING[section_type]
+        new_section = ResumeSection(
+            user_id=user.id,
+            resume_id=new_resume.id,
+            name=section_name,
+            section_type=section_type,
+            display_order=i
+        )
+        db_session.add(new_section)
+        db_session.flush()  # Flush to get the new_section.id
+
+        if section_type == ResumeItemType.skill:
+            new_item = ResumeItem(
+                user_id=user.id,
+                section_id=new_section.id,
+                title="Skill Category",
+                organization="",
+                start_date=datetime.now(),
+                end_date=None,
+                location="",
+                description="Resume-building, problem-solving, etc"
+            )
+        elif section_type == ResumeItemType.project:
+            new_item = ResumeItem(
+                user_id=user.id,
+                section_id=new_section.id,
+                title="Project Name",
+                organization="",
+                start_date=datetime.now(),
+                end_date=None,
+                location="",
+                description="Project description"
+            )
+        elif section_type == ResumeItemType.experience:
+            new_item = ResumeItem(
+                user_id=user.id,
+                section_id=new_section.id,
+                title="Job Title",
+                organization="Company Name",
+                start_date=datetime.now(),
+                end_date=None,
+                location="",
+                description="Job description"
+            )
+        elif section_type == ResumeItemType.education:
+            new_item = ResumeItem(
+                user_id=user.id,
+                section_id=new_section.id,
+                title="Degree",
+                organization="University Name",
+                start_date=datetime.now(),
+                end_date=None,
+                location="",
+                description="Degree description"
+            )
+        else:
+            raise ValueError(f"Invalid section type: {section_type}")
+
+        db_session.add(new_item)
+
+    return new_resume
 
 
 def get_full_resume(resume_id: int, user: User, db_session) -> Resume | None:

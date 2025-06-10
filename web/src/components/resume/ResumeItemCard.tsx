@@ -8,7 +8,7 @@ import { ResumeMonthYearField } from "../ui/datepicker"
 import LabelledInput from "../ui/LabelledInput"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ChevronUpIcon, ChevronDownIcon } from "lucide-react"
+import { ChevronUpIcon, ChevronDownIcon, Trash2Icon } from "lucide-react"
 interface ResumeItemCardProps {
   resumeItem: ResumeItemType;
   compact?: boolean;
@@ -19,6 +19,8 @@ interface ResumeItemCardProps {
   isLast?: boolean;
   onUpdate: (updates: Partial<ResumeItemType>) => void;
   isSkill?: boolean;
+  onDelete?: () => void;
+  canDelete?: boolean;
 }
 
 export default function ResumeItemCard({ 
@@ -31,6 +33,8 @@ export default function ResumeItemCard({
   isLast,
   onUpdate,
   isSkill = false,
+  onDelete,
+  canDelete,
 }: ResumeItemCardProps) {
 
   const handleFieldChange = (field: keyof ResumeItemType, value: string | Date | null) => {
@@ -107,23 +111,44 @@ export default function ResumeItemCard({
                 </div>
               )}
               
-              <LabelledInput 
-                label="Title" 
-                htmlFor={`title-${resumeItem.id}`}
-                className="w-full"
-                input={
-                  <Input
-                    id={`title-${resumeItem.id}`}
-                    value={resumeItem.title}
-                    onChange={(e) => handleFieldChange("title", e.target.value)}
-                    placeholder="Job Title"
+              <div className="flex-1 min-w-0">
+                <LabelledInput 
+                  label="Title" 
+                  htmlFor={`title-${resumeItem.id}`}
+                  className="w-full"
+                  input={
+                    <Input
+                      id={`title-${resumeItem.id}`}
+                      value={resumeItem.title}
+                      onChange={(e) => handleFieldChange("title", e.target.value)}
+                      placeholder="Job Title"
+                      className={cn(
+                        "w-full font-medium truncate",
+                        compact ? "h-8 text-xs" : "h-9 text-sm"
+                      )}
+                    />
+                  }
+                />
+              </div>
+
+              {onDelete && (
+                <div className="mt-6">
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     className={cn(
-                      "w-full font-medium truncate",
-                      compact ? "h-8 text-xs" : "h-9 text-sm"
+                      "h-6 w-6 rounded-full p-0 text-gray-500 hover:text-red-600 hover:bg-red-50",
+                      compact ? "h-5 w-5" : "h-6 w-6",
+                      !canDelete && "cursor-not-allowed opacity-50"
                     )}
-                  />
-                }
-              />
+                    disabled={!canDelete}
+                    onClick={onDelete}
+                    aria-label="Delete item"
+                  >
+                    <Trash2Icon className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
           

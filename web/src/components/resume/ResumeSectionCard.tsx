@@ -10,27 +10,30 @@ interface ResumeSectionProps {
   resumeItems: ResumeItemType[];
   className?: string;
   compact?: boolean; // For smaller containers
-  
+
   // Reordering callbacks
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
-  
+
   // Item reordering callbacks
   onMoveItemUp?: (itemId: number | string) => void;
   onMoveItemDown?: (itemId: number | string) => void;
-  
+
   // Add item callback
   onAddItem?: () => void;
 
   // Update item callback
   onUpdateItem?: (itemId: number | string, updates: Partial<ResumeItemType>) => void;
+
+  // Delete item callback
+  onDeleteItem?: (itemId: number | string) => void;
 }
 
-export default function ResumeSection({ 
-  title, 
-  resumeItems, 
+export default function ResumeSection({
+  title,
+  resumeItems,
   className,
   compact = false,
   // onMoveUp,
@@ -40,9 +43,10 @@ export default function ResumeSection({
   onMoveItemUp,
   onMoveItemDown,
   onAddItem,
-  onUpdateItem
+  onUpdateItem,
+  onDeleteItem
 }: ResumeSectionProps) {
-  
+
   // Professional spacing and padding
   const getLayoutClasses = () => {
     if (compact) {
@@ -52,7 +56,7 @@ export default function ResumeSection({
         content: "px-3 pb-3 space-y-2",
       }
     }
-    
+
     return {
       header: "pb-3 px-4 pt-4",
       title: "text-lg font-semibold text-gray-900",
@@ -104,12 +108,12 @@ export default function ResumeSection({
               {title}
             </CardTitle>
           </div>
-          
+
           {/* Add Item Button */}
           {onAddItem && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               className="h-7 px-2 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50"
               onClick={onAddItem}
             >
@@ -121,15 +125,17 @@ export default function ResumeSection({
       </CardHeader>
       <CardContent className={layout.content}>
         {resumeItems.map((item, index) => (
-          <ResumeItemCard 
-            key={item.id} 
-            resumeItem={item} 
+          <ResumeItemCard
+            key={item.id}
+            resumeItem={item}
             compact={compact}
             onMoveUp={onMoveItemUp ? () => onMoveItemUp(item.id) : undefined}
             onMoveDown={onMoveItemDown ? () => onMoveItemDown(item.id) : undefined}
             isFirst={index === 0}
             isLast={index === resumeItems.length - 1}
             onUpdate={(updates) => onUpdateItem && onUpdateItem(item.id, updates)}
+            onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
+            canDelete={resumeItems.length > 1}
             isSkill={isSkill}
           />
         ))}

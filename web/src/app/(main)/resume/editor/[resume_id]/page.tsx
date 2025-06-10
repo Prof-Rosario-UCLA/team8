@@ -3,19 +3,13 @@
 import { useState, useEffect } from "react";
 import ResumeSection from "@/components/resume/ResumeSectionCard";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, EyeIcon, SaveIcon } from "lucide-react";
-import { ResumeItemType, ResumeSectionType, ResumeType, ResumeSectionItemType, ALL_SECTION_TYPES, ResumeUpdatePayload } from "@/lib/types/Resume";
+import { EyeIcon, SaveIcon } from "lucide-react";
+import { ResumeItemType, ResumeSectionType, ResumeType, ORDERED_SECTION_TYPES, SECTION_TYPE_DISPLAY_NAME_MAP, ResumeUpdatePayload } from "@/lib/types/Resume";
 import LoadingPage from "@/components/loading/Loading";
 import LabelledInput from "@/components/ui/LabelledInput";
 import { Input } from "@/components/ui/input";
 import { parseDates } from "@/lib/utils/date";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ResumeTOC from "@/components/resume/ResumeTOC";
 import { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -30,6 +24,7 @@ function useResumeEditor(resumeId: string) {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const startCompilation = async () => {
     if (!resumeId) return;
@@ -107,6 +102,35 @@ function useResumeEditor(resumeId: string) {
         const data = await response.json();
         console.log('Resume data received:', data);
 
+        // Ensure all sections are present and add a default item if a section is new
+        const existingSectionTypes = new Set(data.sections.map((s: ResumeSectionType) => s.section_type));
+        console.log("Existing section types:", existingSectionTypes);
+        console.log("Ordered section types:", ORDERED_SECTION_TYPES);
+        for (const sectionType of ORDERED_SECTION_TYPES) {
+          if (!existingSectionTypes.has(sectionType)) {
+            const newSection: ResumeSectionType = {
+              id: crypto.randomUUID(),
+              name: SECTION_TYPE_DISPLAY_NAME_MAP[sectionType],
+              section_type: sectionType,
+              items: [{
+                id: crypto.randomUUID(),
+                title: "New Entry",
+                organization: "",
+                start_date: null,
+                end_date: null,
+                location: "",
+                description: "",
+              }],
+            };
+            data.sections.push(newSection);
+          }
+        }
+        
+        // Sort sections based on the predefined order
+        data.sections.sort((a: ResumeSectionType, b: ResumeSectionType) => {
+          return ORDERED_SECTION_TYPES.indexOf(a.section_type) - ORDERED_SECTION_TYPES.indexOf(b.section_type);
+        });
+
         // Recursively parse date strings into Date objects
         const resumeDataWithDates = parseDates(data) as ResumeType;
         
@@ -122,30 +146,6 @@ function useResumeEditor(resumeId: string) {
 
     loadResume();
   }, [resumeId]);
-
-  const addSection = (sectionType: ResumeSectionItemType) => {
-    if (!resume) return;
-
-    // Capitalize first letter for display name
-    const name = sectionType.charAt(0).toUpperCase() + sectionType.slice(1);
-
-    const newSection: ResumeSectionType = {
-        id: crypto.randomUUID(), // Temporary client-side ID
-        name: name,
-        type: sectionType,
-        items: [],
-    };
-
-    setResume(prev => {
-        if (!prev) return null;
-        return {
-            ...prev,
-            sections: [...prev.sections, newSection],
-            updated_at: new Date(),
-        };
-    });
-    setHasUnsavedChanges(true);
-  };
 
   const addItemToSection = (sectionId: string | number) => {
     if (!resume) return;
@@ -182,6 +182,31 @@ function useResumeEditor(resumeId: string) {
     setHasUnsavedChanges(true);
   };
 
+  const deleteItemFromSection = (sectionId: string | number, itemId: string | number) => {
+    if (!resume) return;
+
+    setResume(prev => {
+      if (!prev) return null;
+
+      const section = prev.sections.find(s => s.id === sectionId);
+      if (!section || section.items.length <= 1) {
+        // Prevent deleting the last item
+        return prev;
+      }
+
+      return {
+        ...prev,
+        sections: prev.sections.map(s =>
+          s.id === sectionId
+            ? { ...s, items: s.items.filter(item => item.id !== itemId) }
+            : s
+        ),
+        updated_at: new Date(),
+      };
+    });
+    setHasUnsavedChanges(true);
+  };
+
   const updateResumeItem = (sectionId: string | number, itemId: string | number, updates: Partial<ResumeItemType>) => {
     if (!resume) return;
 
@@ -203,35 +228,6 @@ function useResumeEditor(resumeId: string) {
         updated_at: new Date(),
       };
     });
-    setHasUnsavedChanges(true);
-  };
-
-  const reorderSection = (sectionId: string | number, direction: 'up' | 'down') => {
-    if (!resume) return;
-
-    setResume(prev => {
-      if (!prev) return null;
-      
-      const sectionIndex = prev.sections.findIndex(section => section.id === sectionId);
-      if (sectionIndex === -1) return prev;
-      
-      if (direction === 'up' && sectionIndex === 0) return prev;
-      if (direction === 'down' && sectionIndex === prev.sections.length - 1) return prev;
-      
-      const newSections = [...prev.sections];
-      
-      const targetIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
-      const temp = newSections[targetIndex];
-      newSections[targetIndex] = newSections[sectionIndex];
-      newSections[sectionIndex] = temp;
-      
-      return {
-        ...prev,
-        sections: newSections,
-        updated_at: new Date()
-      };
-    });
-    
     setHasUnsavedChanges(true);
   };
 
@@ -343,6 +339,7 @@ function useResumeEditor(resumeId: string) {
     if (!resume || !hasUnsavedChanges) return;
 
     setHasUnsavedChanges(true); // UI shows "saving..." until sync is confirmed.
+    setSaveError(null);
 
     try {
       const payload: ResumeUpdatePayload = {
@@ -364,41 +361,46 @@ function useResumeEditor(resumeId: string) {
       });
 
       if (!response.ok) {
-        console.log("Save request failed but has been queued for background sync.");
+        if (response.status >= 400 && response.status < 500) {
+          const errorData = await response.json();
+          setSaveError(errorData.error || "An unknown validation error occurred.");
+          setHasUnsavedChanges(true); // Keep unsaved state
+          console.error("Client-side validation error:", errorData);
+        } else {
+          console.log("Save request failed but has been queued for background sync.");
+          setSaveError("Server error, your changes will be saved in the background.");
+        }
       } else {
         const data = await response.json();
         console.log('Resume saved, server response:', data);
         const resumeDataWithDates = parseDates(data) as ResumeType;
         setResume(resumeDataWithDates);
         setHasUnsavedChanges(false);
+        setSaveError(null);
         startCompilation(); // Re-compile after a successful save
       }
     } catch (error) {
       console.error("Fetch failed. The service worker will handle retrying.", error);
+      setSaveError("Network error. Your changes have been queued for saving.");
     }
   };
-
-  const availableSectionTypes = resume 
-    ? ALL_SECTION_TYPES.filter(type => !resume.sections.some(s => s.type === type))
-    : [];
 
   return {
     resume,
     isLoading,
     hasUnsavedChanges,
     updateResumeItem,
-    reorderSection,
     reorderItem,
     saveResume,
-    addSection,
     addItemToSection,
-    availableSectionTypes,
+    deleteItemFromSection,
     handleDragEnd,
     updateUserInfo,
     updateResumeName,
     syncMessage,
     pdfUrl,
     isCompiling,
+    saveError,
   };
 }
 
@@ -428,7 +430,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     );
   }
 
-  const { resume, hasUnsavedChanges, saveResume, reorderSection, reorderItem, addSection, addItemToSection, availableSectionTypes, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling } = resumeEditor;
+  const { resume, hasUnsavedChanges, saveResume, reorderItem, addItemToSection, deleteItemFromSection, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling, saveError } = resumeEditor;
 
   // Split view: editor on left, preview on right
   const leftPanel = (
@@ -462,7 +464,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             {syncMessage}
           </div>
         )}
-        {hasUnsavedChanges && !syncMessage && (
+        {saveError && (
+          <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+            <strong>Error:</strong> {saveError}
+          </div>
+        )}
+        {hasUnsavedChanges && !syncMessage && !saveError && (
           <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
             You have unsaved changes
           </div>
@@ -476,50 +483,21 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             onUpdate={updateUserInfo}
             className="bg-white shadow-sm"
         />
-        {resume.sections.map((section, sectionIndex) => (
+        {resume.sections.map((section) => (
           <ResumeSection 
             key={section.id}
             title={section.name}
             resumeItems={section.items}
             compact={true}
             className="bg-white shadow-sm"
-            onMoveUp={sectionIndex > 0 ? () => reorderSection(section.id, 'up') : undefined}
-            onMoveDown={sectionIndex < resume.sections.length - 1 ? () => reorderSection(section.id, 'down') : undefined}
-            isFirst={sectionIndex === 0}
-            isLast={sectionIndex === resume.sections.length - 1}
             onMoveItemUp={(itemId) => reorderItem(section.id, itemId, 'up')}
             onMoveItemDown={(itemId) => reorderItem(section.id, itemId, 'down')}
             onAddItem={() => addItemToSection(section.id)}
             onUpdateItem={(itemId, updates) => updateResumeItem(section.id, itemId, updates)}
+            onDeleteItem={(itemId) => deleteItemFromSection(section.id, itemId)}
           />
         ))}
         
-        {/* Add Section Dropdown Button */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full flex items-center gap-2 border-dashed"
-              disabled={availableSectionTypes.length === 0}
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add Section
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-full">
-            {availableSectionTypes.map(type => (
-              <DropdownMenuItem key={type} onClick={() => addSection(type)}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {availableSectionTypes.length === 0 && (
-          <p className="text-xs text-center text-gray-500 mt-2">
-            All section types have been added.
-          </p>
-        )}
       </div>
     </section>
   );
@@ -555,56 +533,6 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
       </div>
     </section>
   );
-
-  // old preview for debugging
-  // const oldPreview = (
-  //   <div className="p-6">
-  //     {/* Preview Content - Future: Replace with actual resume template */}
-  //     <div className="max-w-2xl mx-auto">
-  //       <div className="text-center mb-8">
-  //         <h1 className="text-2xl font-bold text-gray-900">{resume.name.replace("'s Resume", "")}</h1>
-  //         <div className="text-sm text-gray-600 mt-2 space-y-1">
-  //           <p>{resume.email} • {resume.phone}</p>
-  //           <p>{resume.linkedin} • {resume.github}</p>
-  //           {resume.website && <p>{resume.website}</p>}
-  //         </div>
-  //       </div>
-
-  //       {resume.sections.map((section) => (
-  //         <div key={section.id} className="mb-6">
-  //           <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-300 pb-1 mb-3">
-  //             {section.name}
-  //           </h2>
-  //           <div className="space-y-3">
-  //             {section.items.map((item) => (
-  //               <div key={item.id} className="text-sm">
-  //                 <div className="flex justify-between items-start mb-1">
-  //                   <h3 className="font-medium text-gray-800">{item.title}</h3>
-  //                   {item.start_date && (
-  //                     <span className="text-gray-600 text-xs">
-  //                       {item.start_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-  //                       {item.end_date ? ` - ${item.end_date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ' - Present'}
-  //                     </span>
-  //                   )}
-  //                 </div>
-  //                 {item.organization && (
-  //                   <div className="text-gray-600 text-xs mb-1">
-  //                     {item.organization}{item.location && ` • ${item.location}`}
-  //                   </div>
-  //                 )}
-  //                 {item.description && (
-  //                   <p className="text-gray-700 text-xs leading-relaxed whitespace-pre-line">
-  //                     {item.description}
-  //                   </p>
-  //                 )}
-  //               </div>
-  //             ))}
-  //           </div>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   </div>
-  // );
 
   return (
     <section className="flex h-full">

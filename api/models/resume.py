@@ -63,6 +63,12 @@ class ResumeItemType(enum.Enum):
     project = "project"
     skill = "skill"
 
+SECTION_TYPE_TO_DISPLAY_NAME_MAPPING = {
+  ResumeItemType.education: "Education",
+  ResumeItemType.experience: "Experience",
+  ResumeItemType.project: "Project",
+  ResumeItemType.skill: "Technical Skills",
+}
 
 class ResumeSection(db.Model, Base):
     __tablename__ = "resume_sections"

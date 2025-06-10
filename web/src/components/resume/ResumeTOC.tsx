@@ -42,11 +42,11 @@ export default function ResumeTOC({ resume, handleDragEnd }: ResumeTOCProps) {
     setActiveId(null);
     handleDragEnd(event); // Call parent handler
   };
-  
+
   const activeItem = activeId
     ? resume.sections
-        .flatMap((s) => s.items.map((i) => ({ ...i, sectionId: s.id })))
-        .find((i) => `${i.sectionId}::${i.id}` === activeId)
+      .flatMap((s) => s.items.map((i) => ({ ...i, sectionId: s.id })))
+      .find((i) => `${i.sectionId}::${i.id}` === activeId)
     : null;
 
 
@@ -86,10 +86,10 @@ export default function ResumeTOC({ resume, handleDragEnd }: ResumeTOCProps) {
             ))}
           </nav>
           <DragOverlay>
-              {activeItem ? (
-                  <SortableItem id={`${activeItem.sectionId}::${activeItem.id}`} title={activeItem.title} />
-              ) : null}
-          </DragOverlay> 
+            {activeItem ? (
+              <SortableItem id={`${activeItem.sectionId}::${activeItem.id}`} title={activeItem.title} />
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
     </aside>
