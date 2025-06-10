@@ -538,7 +538,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
       
       <div className="p-2 h-full">
         {pdfUrl ? (
-          <iframe src={pdfUrl} className="w-full h-full border-none" title="Resume Preview"></iframe>
+          <iframe src={pdfUrl + '#toolbar=0'} className="w-full h-full border-none" title="Resume Preview"></iframe>
         ) : (
           <div className="flex items-center justify-center h-full bg-white rounded-md">
             <div className="text-center">

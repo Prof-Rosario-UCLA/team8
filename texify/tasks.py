@@ -1,6 +1,9 @@
 import os
 import subprocess
 import tempfile
+import json
+
+from datetime import datetime
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -62,17 +65,26 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
         )
 
         new_data = data.copy()
+        print(json.dumps(new_data, indent=4))
 
         for section in data.get("sections", []):
-            section_name = section.get("name").lower().replace(" ", "_")
+            section_name = section.get("section_type").lower().replace(" ", "_")
             new_data[section_name] = []
             for item in section.get("items", []):
                 new_item = item
-                if (
-                    section_name != "technical_skills"
-                    and type(item["description"]) is str
-                ):
+                if section_name != "skill" and type(item["description"]) is str:
                     new_item["description"] = item["description"].split("\n")
+                    dt = datetime.fromisoformat(item["start_date"])
+                    # Format as a normal readable date
+                    readable = dt.strftime("%b %Y")
+                    new_item["start_date"] = readable
+                    if item["end_date"]:
+                        dt = datetime.fromisoformat(item["end_date"])
+                        # Format as a normal readable date
+                        readable = dt.strftime("%b %Y")
+                        new_item["end_date"] = readable
+                    else:
+                        new_item["end_date"] = "Present"
                 new_data[section_name].append(item)
         del new_data["sections"]
 
@@ -87,6 +99,9 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
 
             # Write the LaTeX source to a .tex file
             with open(tex_path, "w") as f:
+                f.write(latex_code)
+
+            with open("/tmp/tmp.tex", "w") as f:
                 f.write(latex_code)
 
             # Compile using pdflatex

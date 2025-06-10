@@ -13,6 +13,7 @@ from models.template import Template
 
 from db import db
 
+
 class Resume(db.Model, Base):
     __tablename__ = "resumes"
 
@@ -50,7 +51,9 @@ class Resume(db.Model, Base):
             "linkedin": self.user.linkedin,
             "github": self.user.github,
             "website": self.user.website,
-            "sections": [sec.json() for sec in self.sections],  # TODO: sort by display order and return list
+            "sections": [
+                sec.json() for sec in self.sections
+            ],  # TODO: sort by display order and return list
         }
 
 

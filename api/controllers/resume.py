@@ -222,7 +222,7 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
 
     # Process Sections
     sections_payload = payload.get("sections", [])
-    user_id = user_to_update.id # Keep user_id for nested calls for simplicity
+    user_id = user_to_update.id  # Keep user_id for nested calls for simplicity
 
     # Get current sections from DB for this resume to find orphans later
     current_db_sections_stmt = select(ResumeSection.id).where(

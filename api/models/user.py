@@ -8,8 +8,9 @@ from models import Base
 
 from db import db
 
-if TYPE_CHECKING: # Avoid circular import
+if TYPE_CHECKING:  # Avoid circular import
     from models.resume import Resume
+
 
 class User(UserMixin, db.Model, Base):
     __tablename__ = "users"
@@ -24,7 +25,7 @@ class User(UserMixin, db.Model, Base):
     linkedin: Mapped[str | None] = mapped_column(nullable=True)
     github: Mapped[str | None] = mapped_column(nullable=True)
     website: Mapped[str | None] = mapped_column(nullable=True)
-    
+
     resumes: Mapped[List["Resume"]] = relationship(back_populates="user")
 
     @override

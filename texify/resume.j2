@@ -107,7 +107,7 @@
 
 \section{Projects}
     \resumeSubHeadingListStart
-        {% for proj in projects %}\resumeProjectHeading
+        {% for proj in project %}\resumeProjectHeading
             {\textbf{ {{ proj.get("title", "") }} }}{ {{ proj.get("start_date", "") }} - {{ proj.get("end_date", "") if proj.get("end_date", "") else "Present" }} }
             \resumeItemListStart
                 {% for item in proj.get("description", "") %}
@@ -120,7 +120,7 @@
 \section{Technical Skills}
  \begin{itemize}[leftmargin=0.15in, label={}]
     \small{\item{
-        {% for skill in technical_skills %} \textbf{ {{ skill.get("title", "") }} }{: {{ skill.get("description", "") }} } \\
+        {% for s in skill %} \textbf{ {{ s.get("title", "") }} }{: {{ s.get("description", "") }} } \\
         {% endfor %}
     }}
  \end{itemize}

@@ -125,7 +125,7 @@ def update_resume(id: int):
         db.session.rollback()
         print(f"Error during resume update: {e}")
         return jsonify(
-            {"error": "An unexpected error occurred while updating the resume."}
+            {"error": f"An unexpected error occurred while updating the resume. {e}"}
         ), 500
 
 
