@@ -229,14 +229,15 @@ def callback():
     if state:
         next_url = state.get("next")
 
+    current_app.logger.debug(next_url)
+
     # TODO: check if we need a 307 redirect instead
     # https://stackoverflow.com/questions/32133910/how-redirect-with-args-for-view-function-without-query-string-on-flask
     if next_url and is_safe_url(next_url):
         return redirect(next_url)
 
     # Send user back to homepage
-    base = "/api" if request.headers.get("X-Forwarded-Host") else ""
-    return redirect(base + url_for("main_view.auth_view.index"))
+    return redirect("/")
 
 
 @auth_view.route("/logout")
