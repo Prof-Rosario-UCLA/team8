@@ -8,7 +8,7 @@ RUN npm ci
 
 COPY . /app
 
-EXPOSE 3000
+EXPOSE 8080
 
 ARG SERVER_URL
 
