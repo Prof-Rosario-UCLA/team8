@@ -17,7 +17,7 @@ declare global {
 
 const bgSyncPlugin = new BackgroundSyncPlugin("resume-update-queue", {
   maxRetentionTime: 24 * 60, // Retry for up to 24 hours
-  onSync: async () => {
+  onSync: async ( ) => {
     const windows = await self.clients.matchAll({ type: "window" });
     for (const window of windows) {
       window.postMessage({
@@ -35,9 +35,17 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      matcher: ({ url }) => url.pathname.startsWith("/api/user/me") || url.pathname.startsWith("/api/resume/all"),
+      matcher: ({ url }) => url.pathname.startsWith("/api/user/me"),
       handler: new NetworkFirst({
-        cacheName: "api-data-cache",
+        cacheName: "user-data-cache",
+        networkTimeoutSeconds: 3,
+        plugins: [ new CacheableResponsePlugin({ statuses: [0, 200] }) ],
+      }),
+    },
+    {
+      matcher: ({ url }) => url.pathname.startsWith("/api/resume/all"),
+      handler: new NetworkFirst({
+        cacheName: "all-resumes-cache",
         networkTimeoutSeconds: 3,
         plugins: [ new CacheableResponsePlugin({ statuses: [0, 200] }) ],
       }),
