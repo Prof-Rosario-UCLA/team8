@@ -59,7 +59,9 @@ function useResumeEditor(resumeId: string) {
             // handle task_id
             if (!task_id) {
                 console.error("No task_id returned from compilation");
+                setCompilationError("Failed to start compilation: no task ID returned.");
                 setIsCompiling(false);
+                setIsSaving(false);
                 return;
             }
 
@@ -70,6 +72,7 @@ function useResumeEditor(resumeId: string) {
                     clearInterval(intervalId);
                     setCompilationError("Could not retrieve compilation status from the server.");
                     setIsCompiling(false);
+                    setIsSaving(false);
                     return;
                 }
 
@@ -79,23 +82,27 @@ function useResumeEditor(resumeId: string) {
 
                 if (result.status === 'done') {
                     setPdfUrl(result.url);
-                    setIsCompiling(false);
                     clearInterval(intervalId);
+                    setIsCompiling(false);
+                    setIsSaving(false);
                 } else if (result.status === 'failure') {
                     const errorMessage = result.error || "An unknown compilation error occurred.";
                     console.error("PDF Compilation failed:", errorMessage);
                     setCompilationError(errorMessage);
-                    setIsCompiling(false);
                     clearInterval(intervalId);
+                    setIsCompiling(false);
+                    setIsSaving(false);
                 }
                 // If 'pending', do nothing and let it poll again
             };
 
             const intervalId = setInterval(poll, 2000); // Poll every 2 seconds
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             console.error("Error during compilation process:", error);
-            setCompilationError(error instanceof Error ? error.message : "An unknown error occurred.");
+            setCompilationError(errorMessage);
             setIsCompiling(false);
+            setIsSaving(false);
         }
     }, [resumeId]);
 
@@ -365,9 +372,9 @@ function useResumeEditor(resumeId: string) {
     const saveResume = async () => {
         if (!resume || !hasUnsavedChanges || !isUserInfoValid) return;
 
-        setHasUnsavedChanges(true);
         setIsSaving(true);
         setSaveError(null);
+        setCompilationError(null);
 
         try {
             const payload: ResumeUpdatePayload = {
@@ -398,6 +405,7 @@ function useResumeEditor(resumeId: string) {
                     console.log("Save request failed but has been queued for background sync.");
                     setSaveError("Server error, your changes will be saved in the background.");
                 }
+                setIsSaving(false);
             } else {
                 const data = await response.json();
                 console.log('Resume saved, server response:', data);
@@ -405,12 +413,11 @@ function useResumeEditor(resumeId: string) {
                 setResume(resumeDataWithDates);
                 setHasUnsavedChanges(false);
                 setSaveError(null);
-                startCompilation(); // Re-compile after a successful save
+                startCompilation(); // This will now manage the isSaving state until compilation is done.
             }
         } catch (error) {
             console.error("Fetch failed. The service worker will handle retrying.", error);
             setSaveError("Network error. Your changes have been queued for saving.");
-        } finally {
             setIsSaving(false);
         }
     };
@@ -530,7 +537,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                             className="flex items-center gap-2"
                         >
                             <SaveIcon className="h-4 w-4" />
-                            {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                            {isSaving ? 'Saving...' : (hasUnsavedChanges ? 'Save Changes' : 'Saved')}
                         </Button>
                         <Button
                             variant="outline"
@@ -621,7 +628,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             </header>
 
             <div className="p-2 h-full">
-                {pdfUrl ? (
+                {pdfUrl && !isCompiling ? (
                     <iframe src={pdfUrl + '#toolbar=0'} className="w-full h-full border-none" title="Resume Preview"></iframe>
                 ) : (
                     <div className="flex items-center justify-center h-full bg-white rounded-md">

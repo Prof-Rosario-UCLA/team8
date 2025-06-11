@@ -8,19 +8,22 @@ import { useEffect, useState } from "react";
 import LoadingPage from "@/components/loading/Loading";
 
 export default function Home() {
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoaded, setIsLoaded] = useState(false);
     const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
 
     useEffect(() => {
-        setIsLoading(true);
         fetch("/api/user/me", { credentials: 'include' })
             .then(res => res.ok ? res.json() : null)
-            .then(data => setIsUserLoggedIn(data !== null));
-        setIsLoading(false);
+            .then(data => {
+                setIsUserLoggedIn(data !== null);
+                // Only set isLoaded after fetch to prevent
+                // glitching on the page
+                setIsLoaded(true);
+            });
     }, []);
 
 
-    if (isLoading) {
+    if (!isLoaded) {
         return <LoadingPage message="Loading..." />;
     }
 
@@ -65,14 +68,17 @@ export default function Home() {
                             </Link>
 
                             {!isUserLoggedIn && (
-                                <Link href="/api/auth/login?next=/">
-                                    <Button
-                                        size="lg"
-                                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    >
-                                        Login
-                                    </Button>
-                                </Link>
+                                <Button
+                                    size="lg"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={()=>{
+                                        // Give the illusion of an instant redirect
+                                        setIsLoaded(false);
+                                        window.location.href = "/api/auth/login?next=/resume/dashboard";
+                                    }}
+                                >
+                                    Login
+                                </Button>
                             )}
 
                         </div>

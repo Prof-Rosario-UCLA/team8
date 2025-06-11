@@ -15,30 +15,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    setIsLoading(true);
-
     // waiting for auth setup
-
     fetch('/api/user/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (!data) {
-          router.push(`/api/auth/login?next=${pathname}`);
+          router.push('/');
         } else {
           setUser(data);
         }
       }).catch(() => {
-        router.push(`/api/auth/login?next=${pathname}`);
+        router.push('/');
       })
       .finally(() => {
-        setIsLoading(false);
+        setIsLoaded(true);
       });
   }, [router, pathname]);
 
-  if (isLoading) return <LoadingPage />;
+  if (!isLoaded) return <LoadingPage />;
 
   return (
     <AuthContext.Provider value={{ user }}>
