@@ -521,36 +521,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     const [resolvedParams, setResolvedParams] = useState<{ resume_id: string } | null>(null);
     const [isTocOpen, setIsTocOpen] = useState(true);
     const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
-    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         params.then(setResolvedParams);
     }, [params]);
 
     const resumeEditor = useResumeEditor(resolvedParams?.resume_id || '');
-
-    const handleDownload = async () => {
-        if (!resumeEditor.pdfUrl) return;
-
-        setIsDownloading(true);
-        try {
-            const response = await fetch(resumeEditor.pdfUrl);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `${resumeEditor.resume?.resume_name || 'resume'}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } catch (error) {
-            console.error('Download failed:', error);
-        } finally {
-            setIsDownloading(false);
-        }
-    };
 
     if (!resolvedParams || resumeEditor.isLoading) {
         return (
@@ -677,9 +653,9 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                         {isCompiling && <span className="text-xs text-gray-500 ml-2">(Compiling...)</span>}
                     </div>
                     {pdfUrl && !isCompiling && (
-                        <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading}>
+                        <Button variant="outline" size="sm" onClick={() => window.open(pdfUrl, '_blank')}>
                             <DownloadIcon className="h-4 w-4 mr-2" />
-                            {isDownloading ? 'Downloading...' : 'Download'}
+                            Download
                         </Button>
                     )}
                 </div>
