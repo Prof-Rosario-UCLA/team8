@@ -18,6 +18,37 @@ import UserInfoCard from "@/components/resume/UserInfoCard";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+const MobileViewToggle = ({ mobileView, setMobileView }: { mobileView: 'editor' | 'preview', setMobileView: (view: 'editor' | 'preview') => void }) => {
+    return (
+        <div className="mt-4 border-b border-gray-200 md:hidden">
+            <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                <button
+                    onClick={() => setMobileView('editor')}
+                    className={cn(
+                        'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm',
+                        mobileView === 'editor'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    )}
+                >
+                    Editor
+                </button>
+                <button
+                    onClick={() => setMobileView('preview')}
+                    className={cn(
+                        'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm',
+                        mobileView === 'preview'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    )}
+                >
+                    Preview
+                </button>
+            </nav>
+        </div>
+    );
+};
+
 // Hook for resume state management - future-proofed for backend sync
 function useResumeEditor(resumeId: string) {
     const [resume, setResume] = useState<ResumeType | null>(null);
@@ -489,6 +520,7 @@ function useResumeEditor(resumeId: string) {
 export default function ResumeEditorPage({ params }: { params: Promise<{ resume_id: string }> }) {
     const [resolvedParams, setResolvedParams] = useState<{ resume_id: string } | null>(null);
     const [isTocOpen, setIsTocOpen] = useState(true);
+    const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
 
     useEffect(() => {
         params.then(setResolvedParams);
@@ -516,7 +548,11 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
     // Split view: editor on left, preview on right
     const leftPanel = (
-        <section className="w-full md:w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto">
+        <section className={cn(
+            "w-full md:w-1/2 border-r border-gray-200 bg-gray-50 overflow-auto",
+            "md:block",
+            mobileView === 'preview' ? 'hidden' : 'block'
+        )}>
             {/* Editor Header */}
             <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
                 <div className="flex items-center justify-between">
@@ -571,6 +607,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                         You have unsaved changes
                     </div>
                 )}
+                <MobileViewToggle mobileView={mobileView} setMobileView={setMobileView} />
             </header>
 
             {/* User Info and Resume Sections */}
@@ -602,7 +639,11 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
 
     // Right panel WILL be an iframe of the latex resume pdf, currently just placeholder html elements
     const rightPanel = (
-        <section className="w-1/2 bg-gray-100 overflow-auto hidden md:block">
+        <section className={cn(
+            "w-full md:w-1/2 bg-gray-100 overflow-auto",
+            "md:block",
+            mobileView === 'editor' ? 'hidden' : 'block'
+        )}>
             {/* Preview Header */}
             <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
                 <div className="flex items-center justify-between gap-2">
@@ -625,6 +666,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                         <strong>Compilation Failed:</strong> {compilationError}
                     </div>
                 )}
+                <MobileViewToggle mobileView={mobileView} setMobileView={setMobileView} />
             </header>
 
             <div className="p-2 h-full">
