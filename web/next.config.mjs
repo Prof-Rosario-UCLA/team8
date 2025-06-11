@@ -36,7 +36,7 @@ export const nextConfig = {
 const withSerwist = serwist({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  cacheOnNavigation: false,
+  cacheOnNavigation: true,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
 });
