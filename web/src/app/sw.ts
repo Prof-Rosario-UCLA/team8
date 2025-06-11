@@ -32,8 +32,14 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  navigationPreload: false,
   runtimeCaching: [
+    {
+      matcher: ({ url }) => url.pathname.startsWith("/api/auth"),
+      handler: new NetworkOnly({
+        // Bypass the service worker on auth requests.
+      }),
+    },
     {
       matcher: ({ url }) => url.pathname.startsWith("/api/user/me"),
       handler: new NetworkFirst({
