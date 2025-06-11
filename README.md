@@ -1,4 +1,6 @@
-# prolio
+# 📝 prolio
+![Prolio Home Page](readme_assets/prolio.png)
+
 CS 144: Web Applications. Repository for Prolio, an interactive resume content management system!
 
 # About 
@@ -65,6 +67,8 @@ SERVER_URL=<API_URL>
 ```
 
 # Repo Organization
+
+![System Design](readme_assets/system-design.png)
 
 `web` is NextJS which uses the App Router system to route via the directory structure. 
 We use NextJS, React, Tailwind, Shadcn as our main libraries and frameworks for frontend styling, hooks, acessibility in component primitives, etc. 
