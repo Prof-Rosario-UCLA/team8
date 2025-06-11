@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import ResumeSection from "@/components/resume/ResumeSectionCard";
 import { Button } from "@/components/ui/button";
-import { EyeIcon, SaveIcon, SparklesIcon } from "lucide-react";
+import { EyeIcon, SaveIcon, SparklesIcon, DownloadIcon } from "lucide-react";
 import { ResumeItemType, ResumeSectionType, ResumeType, ORDERED_SECTION_TYPES, SECTION_TYPE_DISPLAY_NAME_MAP, ResumeUpdatePayload } from "@/lib/types/Resume";
 import LoadingPage from "@/components/loading/Loading";
 import LoadingSpinner from "@/components/loading/LoadingSpinner";
@@ -28,18 +28,28 @@ function useResumeEditor(resumeId: string) {
     const [isSaving, setIsSaving] = useState(false);
     const [isCompiling, setIsCompiling] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [compilationError, setCompilationError] = useState<string | null>(null);
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const [ratingData, setRatingData] = useState<{ rating: number; reasoning: string; error?: string } | null>(null);
     const [isRatingLoading, setIsRatingLoading] = useState(false);
+    const [isUserInfoValid, setIsUserInfoValid] = useState(true);
 
     const startCompilation = useCallback(async () => {
         if (!resumeId) return;
 
         setIsCompiling(true);
+        setCompilationError(null);
 
         try {
             const compileResponse = await fetch(`/api/compile/${resumeId}`, { method: 'POST' });
-            if (!compileResponse.ok) throw new Error("Failed to start compilation");
+            if (!compileResponse.ok) {
+                let errorMsg = `Failed to start compilation: ${compileResponse.statusText}`;
+                try {
+                    const errorData = await compileResponse.json();
+                    errorMsg = errorData.error || errorMsg;
+                } catch { }
+                throw new Error(errorMsg);
+            }
 
             const compileData = await compileResponse.json();
             console.log("Compile response:", compileData);
@@ -58,6 +68,7 @@ function useResumeEditor(resumeId: string) {
                 if (!statusResponse.ok) {
                     // Stop polling on server error
                     clearInterval(intervalId);
+                    setCompilationError("Could not retrieve compilation status from the server.");
                     setIsCompiling(false);
                     return;
                 }
@@ -71,7 +82,9 @@ function useResumeEditor(resumeId: string) {
                     setIsCompiling(false);
                     clearInterval(intervalId);
                 } else if (result.status === 'failure') {
-                    console.error("PDF Compilation failed:", result.error);
+                    const errorMessage = result.error || "An unknown compilation error occurred.";
+                    console.error("PDF Compilation failed:", errorMessage);
+                    setCompilationError(errorMessage);
                     setIsCompiling(false);
                     clearInterval(intervalId);
                 }
@@ -81,6 +94,7 @@ function useResumeEditor(resumeId: string) {
             const intervalId = setInterval(poll, 2000); // Poll every 2 seconds
         } catch (error) {
             console.error("Error during compilation process:", error);
+            setCompilationError(error instanceof Error ? error.message : "An unknown error occurred.");
             setIsCompiling(false);
         }
     }, [resumeId]);
@@ -349,7 +363,7 @@ function useResumeEditor(resumeId: string) {
     };
 
     const saveResume = async () => {
-        if (!resume || !hasUnsavedChanges) return;
+        if (!resume || !hasUnsavedChanges || !isUserInfoValid) return;
 
         setHasUnsavedChanges(true);
         setIsSaving(true);
@@ -410,10 +424,22 @@ function useResumeEditor(resumeId: string) {
 
         try {
             const response = await fetch(`/api/ai/rate/${resumeId}`);
-            const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to get AI rating.');
+                let errorMsg = `An error occurred: ${response.statusText} (${response.status})`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.error || errorMsg;
+                } catch {
+                    // JSON parsing failed, stick with the status text.
+                }
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+
+            if (!data.rating || !data.reasoning) {
+                throw new Error("The AI returned an invalid response. Please try again.");
             }
 
             setRatingData(data);
@@ -447,6 +473,9 @@ function useResumeEditor(resumeId: string) {
         isRatingLoading,
         getAIRating,
         isSaving,
+        isUserInfoValid,
+        setIsUserInfoValid,
+        compilationError,
     };
 }
 
@@ -476,7 +505,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
         );
     }
 
-    const { resume, hasUnsavedChanges, saveResume, isSaving, reorderItem, addItemToSection, deleteItemFromSection, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling, saveError, getAIRating, isRatingLoading, ratingData, isRatingModalOpen, setIsRatingModalOpen } = resumeEditor;
+    const { resume, hasUnsavedChanges, saveResume, isSaving, reorderItem, addItemToSection, deleteItemFromSection, updateResumeItem, handleDragEnd, updateUserInfo, updateResumeName, syncMessage, pdfUrl, isCompiling, saveError, getAIRating, isRatingLoading, ratingData, isRatingModalOpen, setIsRatingModalOpen, isUserInfoValid, setIsUserInfoValid, compilationError } = resumeEditor;
 
     // Split view: editor on left, preview on right
     const leftPanel = (
@@ -497,7 +526,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                             variant="outline"
                             size="sm"
                             onClick={saveResume}
-                            disabled={!hasUnsavedChanges}
+                            disabled={!hasUnsavedChanges || isSaving || !isUserInfoValid}
                             className="flex items-center gap-2"
                         >
                             <SaveIcon className="h-4 w-4" />
@@ -525,7 +554,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                         <strong>Error:</strong> {saveError}
                     </div>
                 )}
-                {hasUnsavedChanges && !syncMessage && !saveError && (
+                {hasUnsavedChanges && !syncMessage && !saveError && !isUserInfoValid && (
+                    <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                        Please fix the errors in your personal information before saving.
+                    </div>
+                )}
+                {hasUnsavedChanges && !syncMessage && !saveError && isUserInfoValid && (
                     <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
                         You have unsaved changes
                     </div>
@@ -538,6 +572,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                     userInfo={resume}
                     onUpdate={updateUserInfo}
                     className="bg-white shadow-sm"
+                    onValidation={setIsUserInfoValid}
                 />
                 {resume.sections.map((section) => (
                     <ResumeSection
@@ -563,11 +598,26 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
         <section className="w-1/2 bg-gray-100 overflow-auto hidden md:block">
             {/* Preview Header */}
             <header className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
-                <div className="flex items-center gap-2">
-                    <EyeIcon className="h-5 w-5 text-gray-600" />
-                    <h2 className="text-lg font-medium text-gray-900">Resume Preview</h2>
-                    {isCompiling && <span className="text-xs text-gray-500 ml-2">(Compiling...)</span>}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <EyeIcon className="h-5 w-5 text-gray-600" />
+                        <h2 className="text-lg font-medium text-gray-900">Resume Preview</h2>
+                        {isCompiling && <span className="text-xs text-gray-500 ml-2">(Compiling...)</span>}
+                    </div>
+                    {pdfUrl && !isCompiling && (
+                        <Button variant="outline" size="sm" asChild>
+                            <a href={pdfUrl} download={`${resume.resume_name || 'resume'}.pdf`} className="flex items-center">
+                                <DownloadIcon className="h-4 w-4 mr-2" />
+                                Download
+                            </a>
+                        </Button>
+                    )}
                 </div>
+                {compilationError && (
+                    <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                        <strong>Compilation Failed:</strong> {compilationError}
+                    </div>
+                )}
             </header>
 
             <div className="p-2 h-full">
@@ -624,7 +674,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                             {isRatingLoading
                                 ? "Analyzing..."
                                 : ratingData?.error
-                                    ? "Error"
+                                    ? "AI Analysis Error"
                                     : "AI Resume Rating"}
                         </AlertDialogTitle>
                         <AlertDialogDescription asChild>
@@ -634,7 +684,10 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                                         <LoadingSpinner message="Our AI is analyzing your resume..." />
                                     </div>
                                 ) : ratingData?.error ? (
-                                    <p>{ratingData.error}</p>
+                                    <div className="rounded-md border border-red-200 bg-red-50 p-4">
+                                        <p className="text-sm font-medium text-red-800">Something went wrong</p>
+                                        <p className="mt-1 text-sm text-red-700">{ratingData.error}</p>
+                                    </div>
                                 ) : ratingData ? (
                                     <div className="space-y-4">
                                         <div className="text-center">
