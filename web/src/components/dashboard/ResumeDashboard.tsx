@@ -22,13 +22,12 @@ import { parseDates } from "@/lib/utils/date"
 export default function ResumeDashboard() {
   const router = useRouter()
   const [resumes, setResumes] = useState<ResumeType[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [isLoaded, setIsLoaded] = useState<boolean>(false)
   const [isCreating, setIsCreating] = useState<boolean>(false)
   const [resumeToDelete, setResumeToDelete] = useState<ResumeType | null>(null)
   
   useEffect(() => {
     const fetchResumes = async () => {
-      setIsLoading(true);
       try {
         const response = await fetch('/api/resume/all');
         if (!response.ok) {
@@ -41,7 +40,7 @@ export default function ResumeDashboard() {
       } catch (error) {
         console.error("Error fetching resumes:", error);
       } finally {
-        setIsLoading(false);
+        setIsLoaded(true);
       }
     };
     
@@ -83,7 +82,7 @@ export default function ResumeDashboard() {
     }
   };
 
-  if (isLoading) {
+  if (!isLoaded) {
     return <LoadingPage />
   }
 
