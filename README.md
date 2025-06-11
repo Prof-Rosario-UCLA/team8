@@ -1,59 +1,54 @@
 # prolio
 CS 144: Web Applications. Repository for Prolio, an interactive resume content management system!
 
-## About
+# About 
 
-Resume creator app that is CV focused.
+Prolio is our web app for resume creation through a simple and intuitive ui, that supports injecting into internal LaTeX templates and compilation into a ATS-compatible PDF rendered from LaTeX for clean formatting. Users may also invite AI feedback as they work with the help of our AI reviewer built-on Gemini. 
 
-That is the user flow is that they first enter ALL of their work experience, projects, etc (mostly tailored to CS majors but not strictly) and then can use this to assmeble a resume that points to these data.
+We support drag and drop for ease of reordering resume elements within resume sections as well as geolocation for convenient location filling.
 
-Then a resume is kind of like a particular "view"/subset of the user's entire experience.
+## Setup
 
-I say view, because the resume can "override" something to custom tailor to a JD whilst not tampering with the original data if it's an edit only for this particular resume.
+To build and run the service do:
+`docker-compose build && docker-compose up`
 
-When creating a resume, a user can select a set of preset (for now at least) LaTex resume templates to bake out their resume.
+and the frontend should be default available at `localhost:3000`.
 
-Thus a "resume" is currently a data structure that carries information of what CV content is included, and how it is ordered but the rendering of the resume visually is determined by the Latex template. A "resume" is then part data from the user cv, and a visual format decided by the associated template.
+Note that you will need to provide a Gemini API key to make use of the api service which you can obtain currently for free from Google's AI Studio. 
 
-Within the resume editor, the user should be able to drag and drop broader sections on the resume (Skills, Projects, Experiences)
-they can also reorder content within those fields.
+We have a mock OAuth flow and mock GCS bucket and SQLite for the DB by default but in our main deployment we use the actual services and our PostgreSQL DB is hosted on Supabase.
 
-They can also select a section and pull up their collection of entries (e.g. their projects for Project section) in a sidebar and drag and drop it into the resume form.
+# ENV Variable Setup
 
-The resume editor view is a side by side layout with a editable form on the left, and the latex render preview on the right. Whenever a side menu is needed (e.g. to show existing projects to drag in) it can popover the latex render when appropriate to the context.
+Env variable setup
 
-The specific details on the entries can also be editted, by default these will edit the "view" specific to the resume but can also optionally be written back to the underlying global entry for the user across resumes with a button press to commit it to all. 
-
-Editor mode additional features:
-Filtering down projects by tags and categories
-Pinecone semantic search if we eventually have a pinecone db that stores vector embeddings of the entire entry (project, experience) and maps to the uuid in the SQL db to semantically search for appropriate content to a db or a user's wishes
-
-Future stretch goals.
-
-LLM assistant integration:
-- a side chat panel 
-- natural language resume building, can parse a JD into relevant queries into the vector db and fetch and even automatically assemble a start resume for the JD
-- offer overall feedback on the entire resume document with context of the user's entire CV 
-- probably need to add "formatters" to serialize the JSON structured data into natural language for LLM context
-- can offer rewording in an inline chat for bullet points, fields etc 
-
-## Monorepo organization
-
-This is a monorepo for a resume content management system.
-
-Next.js for server-side rendering under `web`, api is proxied to `/api`, the Flask backend.
-
-## Setup Flask API
 ```
-conda create -n prolio python=3.10
-cd api
-pip install -r requirements.txt
+GOOGLE_CLIENT_ID=<OAUTH_GOOGLE_CLIENT_ID>
+GOOGLE_CLIENT_SECRET=<OAUTH_GOOGLE_CLIENT_SECRET>
+
+DATABASE_URL=<DATABASE_URL>
+
+GEMINI_API_KEY=<GEMINI_API_KEY>
+
+GCS_BUCKET_NAME=<GCS_BUCKET_NAME>
+
+REDIS_IP=<REDIS_IP>
+
+TEXIFY_URL=<COMPILER_SERVICE_URL>
+CLIENT_ORIGIN=<FRONTEND_SERVER_URL>
+SERVER_URL=<API_URL>
 ```
 
-Create `.flaskenv` under `api/`
-```
-FLASK_APP=app
-FLASK_DEBUG=1  
-DATABASE_URL=<DB_URL_HERE>
-```
+# Repo Organization
+
+`web` is NextJS which uses the App Router system to route via the directory structure. 
+We use NextJS, React, Tailwind, Shadcn as our main libraries and frameworks for frontend styling, hooks, acessibility in component primitives, etc.
+We have response uis, accessibilities features, PWA and offline support via our manifest and service workers using Serwist.
+
+`api` is our main Flask API gateway with a REST API that interfaces with our DB with auth middle ware for CRUD operations and handling serialization, interfacing with Gemini and our compiler microservice `texify`. We use SQLAlchemy as our ORM, Alembic for migrations, Supabase as our cloud provider for the PostgreSQL DB, Gemini for LLM services for rating resumes, and our own compiler service that uses Jinja2 to fill LaTeX templates from our structured resume JSON and compile to PDF in a storage bucket.
+
+`texify` is the compiler microservice which handles a task queue using Redis and Celery. It converts resumes to LaTeX and compiles it to a PDF stored in the Google Storage Bucket where the URI may be returned for download and previewing via iframe.
+
+`oauth` is OAuth mock when https is not present in local dev.
+
 
