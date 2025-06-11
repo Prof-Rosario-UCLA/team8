@@ -15,26 +15,6 @@ declare global {
   }
 }
 
-// Handle navigation preload
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    self.registration.navigationPreload.enable()
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  if (event.preloadResponse) {
-    event.respondWith(
-      event.preloadResponse.then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
-    );
-  }
-});
-
 const bgSyncPlugin = new BackgroundSyncPlugin("resume-update-queue", {
   maxRetentionTime: 24 * 60, // Retry for up to 24 hours
   onSync: async ( ) => {
