@@ -41,7 +41,7 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: ({ url }) => url.pathname.startsWith("/resume"),
+      matcher: ({ url }) => url.pathname.startsWith("/resume") || url.pathname == "/",
       handler: new NetworkFirst({
         cacheName: "resume-pages-cache",
         networkTimeoutSeconds: 3,
