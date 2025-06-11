@@ -87,7 +87,7 @@ export default function Navbar() {
                         <Button onClick={handleLogout}
                             variant="ghost"
                             size="sm"
-                            className="flex items-center space-x-2 transition-colorsbg-blue-600 text-white hover:bg-blue-700"
+                            className="flex items-center space-x-2 transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                         >
                             <LogOutIcon className="h-4 w-4" />
                             <span>Logout</span>
@@ -120,6 +120,15 @@ export default function Navbar() {
                                 </Link>
                             )
                         })}
+
+                        <Button onClick={handleLogout}
+                            variant="ghost"
+                            size="sm"
+                            className="p-2 text-gray-600 hover:text-gray-900"
+                        >
+                            <LogOutIcon className="h-4 w-4" />
+                            <span className="sr-only">Logout</span>
+                        </Button>
                     </div>
                 </div>
             </div>
