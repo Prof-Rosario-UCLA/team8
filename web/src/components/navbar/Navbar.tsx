@@ -53,20 +53,20 @@ export default function Navbar() {
                 <div className="flex justify-between items-center h-16">
                     {/* Logo/Brand */}
                     <div className="flex items-center">
-                        <Link href="/" className="flex items-center space-x-2">
+                        <Link href="/" className="flex items-center space-x-2 cursor-pointer">
                             <Image src="/ProlioLogo.png" alt="Prolio Logo" width={32} height={32} className="rounded-sm" />
                             <span className="font-bold text-xl text-gray-900">Prolio</span>
                         </Link>
                     </div>
 
                     {/* Navigation Items */}
-                    <div className="hidden md:flex items-center space-x-1">
+                    <div className="hidden md:flex items-center space-x-1 ">
                         {navItems.map((item) => {
                             const Icon = item.icon
                             const active = isActive(item.href)
 
                             return (
-                                <Link key={item.href} href={item.href}>
+                                <Link key={item.href} href={item.href} className="cursor-grab">
                                     <Button
                                         variant={active ? "default" : "ghost"}
                                         size="sm"
@@ -87,7 +87,7 @@ export default function Navbar() {
                         <Button onClick={handleLogout}
                             variant="ghost"
                             size="sm"
-                            className="flex items-center space-x-2 transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            className="flex items-center space-x-2 transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100 cursor-grab"
                         >
                             <LogOutIcon className="h-4 w-4" />
                             <span>Logout</span>
@@ -103,7 +103,7 @@ export default function Navbar() {
                             const active = isActive(item.href)
 
                             return (
-                                <Link key={item.href} href={item.href}>
+                                <Link key={item.href} href={item.href} className="cursor-grab">
                                     <Button
                                         variant={active ? "default" : "ghost"}
                                         size="sm"
@@ -124,7 +124,7 @@ export default function Navbar() {
                         <Button onClick={handleLogout}
                             variant="ghost"
                             size="sm"
-                            className="p-2 text-gray-600 hover:text-gray-900"
+                            className="p-2 text-gray-600 hover:text-gray-900 cursor-grab"
                         >
                             <LogOutIcon className="h-4 w-4" />
                             <span className="sr-only">Logout</span>
