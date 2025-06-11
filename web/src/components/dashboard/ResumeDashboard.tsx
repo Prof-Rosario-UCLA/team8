@@ -161,6 +161,7 @@ export default function ResumeDashboard() {
                               variant="destructive"
                               className="flex items-center gap-1"
                               onClick={() => setResumeToDelete(resume)}
+                              aria-label="Delete Resume"
                             >
                               <Trash2Icon className="h-3 w-3" />
                             </Button>
@@ -189,7 +190,7 @@ export default function ResumeDashboard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteResume}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteResume} aria-label="Delete Resume Confirmation">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
