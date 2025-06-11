@@ -56,3 +56,4 @@ export default function UserInfoCard({ userInfo, onUpdate, className }: UserInfo
     </Card>
   )
 }
+ 
