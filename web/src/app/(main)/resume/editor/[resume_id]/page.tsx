@@ -692,12 +692,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
             </header>
 
             <div className="p-2 h-full">
-                {pdfUrl && !isCompiling ? (
+                {pdfUrl && !isCompiling && !isSaving ? (
                     <iframe src={pdfUrl + '#toolbar=0'} className="w-full h-full border-none" title="Resume Preview"></iframe>
                 ) : (
                     <div className="flex items-center justify-center h-full bg-white rounded-md">
                         <div className="text-center">
-                            {isCompiling ? (
+                            {isCompiling || isSaving ? (
                                 <>
                                     <LoadingPage message="Generating PDF preview..." />
                                 </>
