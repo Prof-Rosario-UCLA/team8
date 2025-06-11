@@ -733,10 +733,10 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
                         {isTocOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </Button>
                 </div>
-                <div className="flex-1 flex">
+                <main className="flex-1 flex">
                     {leftPanel}
                     {rightPanel}
-                </div>
+                </main>
             </section>
             <AlertDialog open={isRatingModalOpen} onOpenChange={setIsRatingModalOpen}>
                 <AlertDialogContent>

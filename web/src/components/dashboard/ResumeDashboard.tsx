@@ -88,7 +88,7 @@ export default function ResumeDashboard() {
 
   return (
     <>
-      <section className="h-full bg-gray-50">
+      <main className="h-full bg-gray-50">
         {/* Header */}
         <header className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -174,7 +174,7 @@ export default function ResumeDashboard() {
             </section>
           )}
         </section>
-      </section>
+      </main>
 
       {/* Deletion Confirmation Dialog */}
       <AlertDialog open={!!resumeToDelete} onOpenChange={(isOpen) => !isOpen && setResumeToDelete(null)}>
