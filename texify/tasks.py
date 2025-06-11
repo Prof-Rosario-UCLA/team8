@@ -64,9 +64,8 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
             autoescape=False,
         )
 
+        # Preprocess data
         new_data = data.copy()
-        print(json.dumps(new_data, indent=4))
-
         for section in data.get("sections", []):
             section_name = section.get("section_type").lower().replace(" ", "_")
             new_data[section_name] = []
@@ -95,13 +94,8 @@ def compile_latex_to_pdf(self, template_url: str, data: any) -> str:
             tex_path = os.path.join(tmpdir, "document.tex")
             pdf_path = os.path.join(tmpdir, "document.pdf")
 
-            print(tex_path)
-
             # Write the LaTeX source to a .tex file
             with open(tex_path, "w") as f:
-                f.write(latex_code)
-
-            with open("/tmp/tmp.tex", "w") as f:
                 f.write(latex_code)
 
             # Compile using pdflatex

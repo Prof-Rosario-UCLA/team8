@@ -3,7 +3,8 @@ from sqlalchemy import select, and_
 
 from models.user import User
 from models.resume import Resume, ResumeSection, ResumeItem
-from models.template import Template
+
+# from models.template import Template
 from flask_login import login_required, current_user
 
 from db import db

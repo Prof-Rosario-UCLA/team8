@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from db import db
 
 from controllers.resume import get_full_resume
-from controllers.template import get_template
+# from controllers.template import get_template
 
 from models.user import User
 import requests

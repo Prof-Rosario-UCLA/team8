@@ -8,9 +8,6 @@ class Base:
     def json(self) -> dict[str, str]:
         pass
 
-    # TODO(bliutech): add a mutex to db object
-    # to make it thread safe or use SQLAlchemy
-    # connection pool instead
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()

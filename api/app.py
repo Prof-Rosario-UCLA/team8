@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 
 # load env before importing views
-# load_dotenv(".flaskenv", override=True)
 load_dotenv(".env")
 
 from flask import Flask, Blueprint, jsonify
@@ -15,8 +14,6 @@ from flask_login import LoginManager
 
 from cache import init_cache
 
-import logging
-
 
 from views.auth import auth_view
 from views.resume import resume_views
@@ -27,10 +24,6 @@ from views.ai import ai_views
 
 
 app = Flask(__name__)
-# https://stackoverflow.com/questions/26578733/why-is-flask-application-not-creating-any-logs-when-hosted-by-gunicorn
-gunicorn_error_logger = logging.getLogger("gunicorn.error")
-app.logger.handlers.extend(gunicorn_error_logger.handlers)
-app.logger.setLevel(logging.DEBUG)
 
 # --- CORS Configuration ---
 CLIENT_ORIGIN = os.environ.get("CLIENT_ORIGIN") or "http://localhost:3000"
@@ -43,7 +36,6 @@ CORS(app, resources={r"/api/*": {"origins": CLIENT_ORIGIN}})
 app.config["SQLALCHEMY_DATABASE_URI"] = (
     os.environ.get("DATABASE_URL") or "sqlite:///:memory:"
 )
-# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
 # Init flask cache middleware
@@ -70,6 +62,7 @@ def ping():
     return jsonify(message="Pong!")
 
 
+# Set everything relative to /api
 main_view = Blueprint("main_view", __name__, url_prefix="/api")
 main_view.register_blueprint(auth_view)
 main_view.register_blueprint(resume_views)

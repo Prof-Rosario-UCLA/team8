@@ -73,37 +73,6 @@ export default function ResumeSection({
       <CardHeader className={layout.header}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {/* Section Elevator Buttons */}
-            {/* {(onMoveUp || onMoveDown) && (
-              <div className="flex space-x-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className={cn(
-                    "h-6 w-6 rounded-full p-0",
-                    isFirst ? "text-gray-300 cursor-not-allowed" : "text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                  )}
-                  disabled={isFirst}
-                  onClick={onMoveUp}
-                  aria-label="Move section up"
-                >
-                  <ChevronUpIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className={cn(
-                    "h-6 w-6 rounded-full p-0",
-                    isLast ? "text-gray-300 cursor-not-allowed" : "text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                  )}
-                  disabled={isLast}
-                  onClick={onMoveDown}
-                  aria-label="Move section down"
-                >
-                  <ChevronDownIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            )} */}
             <CardTitle className={layout.title}>
               {title}
             </CardTitle>

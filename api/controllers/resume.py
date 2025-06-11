@@ -11,8 +11,6 @@ from datetime import datetime, timezone
 
 from models.resume import SECTION_TYPE_TO_DISPLAY_NAME_MAPPING
 
-# TODO(bliutech): refactor core logic from views/resume.py into here
-
 
 def parse_iso_date_string(date_string: str | None) -> datetime | None:
     """
@@ -37,13 +35,12 @@ def parse_iso_date_string(date_string: str | None) -> datetime | None:
         )  # Convert to UTC if it has other timezone
     except ValueError:
         # Log an error or handle appropriately if parsing fails
-        print(
+        current_app.logger.info(
             f"Warning: Could not parse date string: {date_string}"
         )  # Or use proper logging
         return None
 
 
-# TODO: Implement other controller functions:
 def _parse_item_data(item_payload: dict, user_id: int) -> dict | None:
     """
     Parses and validates item payload data. Returns a dictionary of parsed data or None if validation fails.
@@ -51,7 +48,9 @@ def _parse_item_data(item_payload: dict, user_id: int) -> dict | None:
     required_fields = ["title", "organization", "start_date", "location", "description"]
     for field in required_fields:
         if field not in item_payload or item_payload[field] is None:
-            print(f"Warning: Missing required field {field} in item payload.")
+            current_app.logger.info(
+                f"Warning: Missing required field {field} in item payload."
+            )
             return None
 
     parsed_data = {
@@ -64,7 +63,9 @@ def _parse_item_data(item_payload: dict, user_id: int) -> dict | None:
     }
 
     if not parsed_data["start_date"]:
-        print(f"Warning: Invalid start_date format: {item_payload['start_date']}")
+        current_app.logger.info(
+            f"Warning: Invalid start_date format: {item_payload['start_date']}"
+        )
         return None
 
     # If end_date was provided but couldn't be parsed, it would be None here, which is acceptable for nullable field.
@@ -95,7 +96,7 @@ def _find_or_create_item(
         except (ValueError, TypeError):
             # If item_id is not a valid integer (e.g., a client-side UUID), treat as a new item.
             item = None
-            print(
+            current_app.logger.info(
                 f"Warning: Invalid item_id format: {item_payload.get('id')}. Treating as new item."
             )
 
@@ -141,7 +142,7 @@ def _find_or_create_section(
         except (ValueError, TypeError):
             # If section_id is not a valid int, treat as a new section.
             section = None
-            print(
+            current_app.logger.info(
                 f"Warning: Invalid section_id format: {section_payload.get('id')}. Treating as new section."
             )
 
@@ -153,12 +154,12 @@ def _find_or_create_section(
             str(section_type_input).lower()
         )  # lower in case frontend sends it with capitalized letters
     except ValueError:
-        print(f"Warning: Invalid section_type: {section_type_input}")
+        current_app.logger.info(f"Warning: Invalid section_type: {section_type_input}")
         return None
 
     name = section_payload.get("name")
     if not name:
-        print("Warning: Missing name for section.")
+        current_app.logger.info("Warning: Missing name for section.")
         return None
 
     if section:  # Existing section, update it
@@ -192,7 +193,7 @@ def _update_section_items(
             item_data_payload, user_id, section_db.id, item_idx, db_session
         )
         if not item_db:
-            print(
+            current_app.logger.info(
                 f"Skipping item due to creation/find failure: {item_data_payload.get('title')}"
             )
             # Potentially raise an error here to abort the transaction
@@ -267,7 +268,7 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
             section_data_payload, resume_db.id, user_id, section_idx, db_session
         )
         if not section_db:
-            print(
+            current_app.logger.info(
                 f"Skipping section due to creation/find failure: {section_data_payload.get('name')}"
             )
             continue  # Skip processing this section if it failed
@@ -294,7 +295,7 @@ def process_resume_update(resume_db: Resume, payload: dict, db_session):
             db_session.delete(
                 section_to_delete
             )  # Cascading delete should handle its associations
-            print(
+            current_app.logger.info(
                 f"Deleting orphaned section_id {sec_id_to_delete} from resume_id {resume_db.id}"
             )
 
@@ -327,7 +328,6 @@ def create_new_resume(user: User, db_session) -> Resume:
         current_app.logger.info(
             "No templates found in the system. Creating a default template."
         )
-        # raise Exception("No templates found in the system. Cannot create a resume.")
 
     # Generate a unique default name
     base_name = "Untitled Resume"

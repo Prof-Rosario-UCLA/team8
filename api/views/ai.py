@@ -1,6 +1,5 @@
 import os
 import json
-import asyncio
 from flask import Blueprint, jsonify, current_app
 from flask_login import login_required, current_user
 from models.user import User  # Assuming this exists
@@ -92,9 +91,7 @@ def rate_resume(resume_id: int):
             generation_config=GENERATION_CONFIG,
         )
 
-        response = gemini_model.generate_content(
-            prompt
-        )  # TODO: make async, but will probably need to change gunicorn to uvicorn
+        response = gemini_model.generate_content(prompt)
 
         # UPDATE: Modern best practice is to check the prompt_feedback for safety blocks
         # instead of relying solely on a broad StopCandidateException.

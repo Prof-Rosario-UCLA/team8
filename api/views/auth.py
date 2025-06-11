@@ -1,5 +1,5 @@
-from flask import Blueprint, request, redirect, url_for, current_app, jsonify
-from flask_login import current_user, login_user, login_required, logout_user
+from flask import Blueprint, request, redirect, current_app, jsonify
+from flask_login import login_user, login_required, logout_user
 
 import os
 import json
@@ -76,20 +76,14 @@ def login():
     # Use library to construct the request for Google login and provide
     # scopes that let you retrieve user's profile from Google
     base_url = request.base_url
-    if request.headers.get("X-Forwarded-Host"):
-        base_url = "http://" + request.headers.get("X-Forwarded-Host") + request.path
-    # TODO(bliutech): add some more checks here to prevent open redirect
     if request.headers.get("Referer"):
         u = urlparse(request.headers.get("Referer"))
         base_url = u.scheme + "://" + u.netloc + request.path
-    current_app.logger.debug(base_url)
-    current_app.logger.debug(request.headers)
-    current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
-    current_app.logger.debug(request.headers.get("Referer"))
+
+    # Only set on production. Force HTTPS
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         base_url = base_url.replace("http://", "https://")
         base_url = base_url.replace("api-dot-prolio-resume", "prolio-resume")
-    current_app.logger.debug(base_url)
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=base_url + "/callback",
@@ -103,9 +97,6 @@ def login():
 def callback():
     # Get authorization code Google sent back to you
     code = request.args.get("code")
-    current_app.logger.debug(code)
-
-    current_app.logger.debug(request.headers)
 
     # Find out what URL to hit to get tokens that allow you to ask for
     # things on behalf of a user
@@ -113,26 +104,18 @@ def callback():
     token_endpoint = google_provider_cfg["token_endpoint"]
 
     AUTHORIZATION_URL = request.url
-    current_app.logger.debug("AUTHORIZATION_URL " + AUTHORIZATION_URL)
     REDIRECT_URL = request.base_url
-    current_app.logger.debug("REDIRECT_URL " + REDIRECT_URL)
-    current_app.logger.debug(request.headers.get("X-Forwarded-Host"))
-    current_app.logger.debug(request.base_url)
-    if request.headers.get("X-Forwarded-Host"):
-        REDIRECT_URL = "http://" + request.headers.get("X-Forwarded-Host")
-        # AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
     if request.headers.get("Referer"):
         REDIRECT_URL = (
             os.environ.get("CLIENT_ORIGIN", "http://localhost:3000") + request.path
         )
         AUTHORIZATION_URL = AUTHORIZATION_URL.replace(request.base_url, REDIRECT_URL)
 
+    # Only set on production. Force HTTPS
     if not os.environ.get("GOOGLE_DISCOVERY_URL"):
         AUTHORIZATION_URL = AUTHORIZATION_URL.replace("http://", "https://")
         REDIRECT_URL = REDIRECT_URL.replace("http://", "https://")
 
-    current_app.logger.debug("AUTHORIZATION_URL " + AUTHORIZATION_URL)
-    current_app.logger.debug("REDIRECT_URL " + REDIRECT_URL)
     # Prepare and send a request to get tokens! Yay tokens!
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
@@ -140,9 +123,7 @@ def callback():
         redirect_url=REDIRECT_URL,
         code=code,
     )
-    current_app.logger.debug(token_url)
-    current_app.logger.debug(headers)
-    current_app.logger.debug(body)
+
     token_response = requests.post(
         token_url,
         headers=headers,
@@ -155,18 +136,14 @@ def callback():
     current_app.logger.debug(res)
     client.parse_request_body_response(res)
 
-    # Now that you have tokens (yay) let's find and hit the URL
-    # from Google that gives you the user's profile information,
-    # including their Google profile image and email
+    # Get user information
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
     uri, headers, body = client.add_token(userinfo_endpoint)
     userinfo_response = requests.get(uri, headers=headers, data=body)
     res = userinfo_response.json()
     current_app.logger.debug(res)
 
-    # You want to make sure their email is verified.
-    # The user authenticated with Google, authorized your
-    # app, and now you've verified their email through Google!
+    # Check email verification
     if res.get("email_verified"):
         unique_id = userinfo_response.json()["sub"]
         users_email = userinfo_response.json()["email"]
@@ -175,8 +152,7 @@ def callback():
     else:
         return "User email not available or not verified by Google.", 400
 
-    # Create a user in your db with the information provided
-    # by Google
+    # Update DB with user information
     user = db.session.execute(db.select(User).filter_by(google_id=unique_id)).fetchone()
 
     # Doesn't exist? Add it to the database.
@@ -204,8 +180,6 @@ def callback():
 
     current_app.logger.debug(next_url)
 
-    # TODO: check if we need a 307 redirect instead
-    # https://stackoverflow.com/questions/32133910/how-redirect-with-args-for-view-function-without-query-string-on-flask
     if next_url and is_safe_url(next_url):
         return redirect(next_url)
 
