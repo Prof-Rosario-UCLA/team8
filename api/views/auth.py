@@ -1,4 +1,4 @@
-from flask import Blueprint, request, redirect, url_for, current_app
+from flask import Blueprint, request, redirect, url_for, current_app, jsonify
 from flask_login import current_user, login_user, login_required, logout_user
 
 import os
@@ -243,9 +243,8 @@ def callback():
     return redirect("/")
 
 
-@auth_view.route("/logout")
+@auth_view.post("/logout")
 @login_required
 def logout():
     logout_user()
-    base = "/api" if request.headers.get("X-Forwarded-Host") else ""
-    return redirect(base + url_for("main_view.auth_view.index"))
+    return jsonify({"message": "Logged out successfully"}), 200
