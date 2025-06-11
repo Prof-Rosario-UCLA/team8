@@ -11,6 +11,8 @@ from oauthlib.oauth2 import WebApplicationClient
 from models.user import User
 from db import db
 
+from cache import invalidate_cache
+
 import requests
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", None)
@@ -62,38 +64,6 @@ def is_safe_url(url: str) -> bool:
 
 
 # Following code referenced from https://realpython.com/flask-google-login/
-
-
-# TODO, move the entire flask routes to under /api prefix (proxied from frontend /api to backend as /api as well so redirects are consistent and less prefix jank, don't reroute through X-Forwarded-Host, since now the paths are the same and will automatically be proxied to backend if appropriate or otherwise stay on frontend)
-
-
-# Testing shim
-@auth_view.route("/shim")
-def index():
-    next_url = request.args.get("next")
-    if next_url and is_safe_url(next_url):
-        next_params = "?next=" + next_url
-    else:
-        next_params = ""
-
-    # TODO: remove this hot garbage later
-    if current_user.is_authenticated:
-        return (
-            "<p>Hello, {}! You're logged in! Email: {}</p>"
-            "<div><p>Google Profile Picture:</p>"
-            '<img src="{}" alt="Google profile pic"></img></div>'
-            '<a class="button" href="/api/auth/logout">Logout</a>'.format(
-                current_user.name,
-                current_user.email,
-                current_user.profile_picture,
-            )
-        )
-    else:
-        # Hotfix(bliutech): Temporary primitive XSS sanitization
-        next_params = next_params.replace('"', "")
-        return f'<a class="button" href="/api/auth/login{next_params}">Google Login</a>'
-
-
 @auth_view.route("/login")
 def login():
     # Find out what URL to hit for Google login
@@ -246,5 +216,6 @@ def callback():
 @auth_view.post("/logout")
 @login_required
 def logout():
+    invalidate_cache()
     logout_user()
     return jsonify({"message": "Logged out successfully"}), 200

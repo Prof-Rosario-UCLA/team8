@@ -6,6 +6,8 @@ from models.user import User
 
 from flask_login import login_required, current_user
 
+from cache import cache_response
+
 from db import db
 
 user_views = Blueprint("user_views", __name__, url_prefix="/user")
@@ -13,6 +15,7 @@ user_views = Blueprint("user_views", __name__, url_prefix="/user")
 
 @user_views.get("/me")
 @login_required
+@cache_response
 def get_myself():
     """
     Retrieve information about the current user.

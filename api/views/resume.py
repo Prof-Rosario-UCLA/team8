@@ -7,6 +7,9 @@ from models.template import Template
 from flask_login import login_required, current_user
 
 from db import db
+
+from cache import cache_response
+
 from controllers.resume import process_resume_update, get_full_resume, create_new_resume
 
 resume_views = Blueprint("resume_views", __name__, url_prefix="/resume")
@@ -16,6 +19,7 @@ resume_views = Blueprint("resume_views", __name__, url_prefix="/resume")
 
 @resume_views.get("/all")
 @login_required
+@cache_response
 def get_all_resumes():
     """
     Return all resumes belonging to a user.

@@ -13,6 +13,8 @@ from db import db, init_db
 
 from flask_login import LoginManager
 
+from cache import init_cache
+
 import logging
 
 
@@ -43,6 +45,9 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 )
 # app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
+
+# Init flask cache middleware
+init_cache(app)
 
 db.init_app(app)
 migrate = Migrate(app, db)

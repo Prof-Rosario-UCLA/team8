@@ -1,9 +1,15 @@
 import os
 from flask import Flask, request, redirect
+from flask_cors import CORS
 import logging
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
+
+# --- CORS Configuration ---
+CLIENT_ORIGIN = os.environ.get("CLIENT_ORIGIN") or "http://localhost:3000"
+# Allow requests from your Next.js development server (default port 3000)
+CORS(app, resources={r"/api/*": {"origins": CLIENT_ORIGIN}})
 
 PORT = 9000
 AUTHORIZED_REDIRECT_URLS = [

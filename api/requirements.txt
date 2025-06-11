@@ -5,6 +5,7 @@ anyio==4.9.0
 asgiref==3.8.1
 billiard==4.2.1
 blinker==1.9.0
+cachelib==0.13.0
 cachetools==5.5.2
 celery==5.5.3
 certifi==2025.4.26
@@ -17,6 +18,7 @@ click-repl==0.3.0
 cryptography==44.0.3
 dotenv==0.9.9
 Flask==3.1.1
+Flask-Caching==2.3.1
 flask-cors==6.0.0
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
