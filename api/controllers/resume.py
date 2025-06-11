@@ -323,8 +323,10 @@ def create_new_resume(user: User, db_session) -> Resume:
         default_template = db_session.execute(
             select(Template).limit(1)
         ).scalar_one_or_none()
-        
-        current_app.logger.info("No templates found in the system. Creating a default template.")
+
+        current_app.logger.info(
+            "No templates found in the system. Creating a default template."
+        )
         # raise Exception("No templates found in the system. Cannot create a resume.")
 
     # Generate a unique default name

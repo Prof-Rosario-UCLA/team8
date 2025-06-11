@@ -24,7 +24,6 @@ def compile_resume(resume_id: int):
     if not result:
         return {"error": "Resume not found"}, 404
 
-
     # TODO: for future support of custom templates
     # template_id = result.template_id
     # template = get_template(template_id)
@@ -34,7 +33,7 @@ def compile_resume(resume_id: int):
     r = requests.post(
         TEXIFY_URL + "/compile",
         json={
-            "template": " ", # TODO: for future support of custom templates, non-empty so not falsey
+            "template": " ",  # TODO: for future support of custom templates, non-empty so not falsey
             "data": result.json(),
         },
     )
