@@ -66,7 +66,7 @@ export default function ResumeSection({
 
   const layout = getLayoutClasses()
 
-  const isSkill = title.toLowerCase() === "skill"
+  const isSkill = title.toLowerCase() === "technical skills" // TODO: pass a flag here
 
   return (
     <Card className={cn("w-full shadow-sm border-gray-200", className)}>
