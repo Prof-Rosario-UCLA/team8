@@ -9,6 +9,9 @@ import LabelledInput from "../ui/LabelledInput"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ChevronUpIcon, ChevronDownIcon, Trash2Icon } from "lucide-react"
+import { useState } from "react"
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 interface ResumeItemCardProps {
   resumeItem: ResumeItemType;
   compact?: boolean;
@@ -68,7 +71,71 @@ export default function ResumeItemCard({
     }
   }
 
-  const layout = getLayoutClasses()
+  const layout = getLayoutClasses();
+
+  const [isGrabbingLocation, setIsGrabbingLocation] = useState(false);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  function getCurrentLocation() {
+    if (!navigator.geolocation) {
+      // Geolocation is not supported by this browser
+      setErrorMessage("Geolocation API is not supported by your browser or you did not allow access.");
+      setIsAlertModalOpen(true);
+      return;
+    }
+
+    setIsGrabbingLocation(true);
+
+    function reverseGeocode(lat: number, lon: number) {
+      // Reverse Geolocation lookup using OpenStreetMaps
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          handleFieldChange("location", data.display_name);
+          setIsGrabbingLocation(false);
+        })
+        .catch(err => {
+          setErrorMessage(`Error in reverse search based on coordinates. Error: ${err}`);
+          setIsAlertModalOpen(true);
+          setIsGrabbingLocation(false);
+        });
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        console.log(position.coords.latitude);
+        console.log(position.coords.longitude);
+
+        if(typeof latitude !== 'number' || typeof longitude !== 'number') {
+          return;
+        }
+
+        reverseGeocode(latitude, longitude);
+      },
+      function (error) {
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            setErrorMessage("User denied the request for Geolocation.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setErrorMessage("Location information is unavailable.");
+            break;
+          case error.TIMEOUT:
+            setErrorMessage("The request to get user location timed out.");
+            break;
+          default:
+            setErrorMessage("An unknown error occurred.");
+            break;
+        }
+        setIsAlertModalOpen(true);
+        setIsGrabbingLocation(false);
+      }
+    );
+  }
 
   return (
     <Card className={cn(layout.container, "w-full border border-gray-200", className)}>
@@ -253,6 +320,16 @@ export default function ResumeItemCard({
               />
             }
           />
+          <Button
+            className={cn(
+              "w-full px-4 py-2 rounded-2xl bg-blue-600 text-white text-sm font-medium",
+              "hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+              "active:bg-blue-800 transition-all duration-150 ease-in-out"
+            )}
+            onClick={getCurrentLocation}
+          >
+            {isGrabbingLocation ? "Grabbing Location ..." : "Use Current Location"}
+          </Button>
         </div>
         </>}
 
@@ -273,6 +350,24 @@ export default function ResumeItemCard({
           />
         </div>
       </CardContent>
+      <AlertDialog open={isAlertModalOpen} onOpenChange={setIsAlertModalOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>
+                    Failed to Grab Current Location
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                    <div className="rounded-md border border-red-200 bg-red-50 p-4">
+                      <p className="text-sm font-medium text-red-800">Something went wrong</p>
+                      <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+                    </div>
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Close</AlertDialogCancel>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
     </Card>
   )
 }
