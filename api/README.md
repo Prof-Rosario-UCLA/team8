@@ -29,3 +29,84 @@ We also interface with the GeminiAPI through the `ai` blueprint which uses the G
 # Caching
 
 We implement caching via Flask caching on our endpoints as middleware and handle cache invalidation on logout and expirations to keep data relatively up to date.
+
+# API 
+
+As a group of 2, this project does not expose endpoints and we make use of the Gemini API instead.
+
+However to document our main API gateway just for internally used endpoints:
+
+`api` holds the main Flask Backend.
+
+Within it we follow MVC structure and use SQLAlchemy as our ORM and library for model creation.
+
+Our controllers implement some of the more detailed logic for creating and updating resumes.
+
+Our main endpoints are related to auth, user info, and resume CRUD.
+
+All routes are prefixed with `/api` and `/api` in the frontend proxies to the backend
+
+## Resume View
+url prefix: `/resume`
+
+`api/views/resume.py`
+
+`/resume/all` GET
+retrieves all resumes
+
+`/resume/<id>` GET
+retrieves that resume id
+
+Both of these endpoints require auth and `/all` is cached with Flask Cache
+
+`/resume/create/<id>` POST
+`/resume/delete/<id>` DELETE
+`/resume/update/<id>` PUT
+`/resume/<id>` GET
+
+Crud operations, expects a serialized resume as in the `json()` method of the Resume model here:
+`api/models/resume.py`
+
+## User View
+
+`api/views/user.py`
+
+`/user/me` GET
+retrieves the currently logged in user. It is protected and the login session is used to get the current user.
+
+## Auth View
+
+`api/views/auth.py`
+
+`/auth/login` GET 
+
+Login through OAuth redirect
+
+`/auth/logout` POST 
+Login required, logs user out
+
+## Compiler View
+
+For interfacing with Compiler microservice:
+`api/views/compile.py`
+
+`/compile/<resume_id>` POST
+Creating a task with compiler microservice to compile the given resume. Protected by auth and requires user to own the resume.
+
+Gets back the job id to poll with.
+
+Polling the task status
+`"/status/<job_id>"` GET
+Polls the task status
+
+returns status and URI if complete.
+
+Note that our template endpoints are skeletoned for future-proofing if in the future custom templates would be supported. For now we support one template in our compiler service.
+
+## AI View
+
+api/views/ai.py
+[route](api/views/ai.py)
+
+`/ai/rate/<resume_id>`
+Rates the resume id with the Gemini Python SDK, must provide an API key in the env variable.
