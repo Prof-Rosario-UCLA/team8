@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from flask import current_app
+
 from models.resume import Resume, ResumeSection, ResumeItem, ResumeItemType
 from models.user import User
 from models.template import Template
@@ -306,11 +308,24 @@ def create_new_resume(user: User, db_session) -> Resume:
     Creates a new resume, fully populated with default sections and a default item for each section.
     """
     # Find a default template
+
     default_template = db_session.execute(
         select(Template).limit(1)
     ).scalar_one_or_none()
     if not default_template:
-        raise Exception("No templates found in the system. Cannot create a resume.")
+        # TODO: for future custom template support
+        # Create a default template
+        default_template = Template()
+        default_template.name = "Default Template"
+        default_template.uri = ""
+        db_session.add(default_template)
+        db_session.flush()
+        default_template = db_session.execute(
+            select(Template).limit(1)
+        ).scalar_one_or_none()
+        
+        current_app.logger.info("No templates found in the system. Creating a default template.")
+        # raise Exception("No templates found in the system. Cannot create a resume.")
 
     # Generate a unique default name
     base_name = "Untitled Resume"

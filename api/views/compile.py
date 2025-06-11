@@ -24,15 +24,17 @@ def compile_resume(resume_id: int):
     if not result:
         return {"error": "Resume not found"}, 404
 
-    template_id = result.template_id
-    template = get_template(template_id)
-    if not template:
-        return {"error": "Template not found"}, 404
+
+    # TODO: for future support of custom templates
+    # template_id = result.template_id
+    # template = get_template(template_id)
+    # if not template:
+    #     return {"error": "Template not found"}, 404
 
     r = requests.post(
         TEXIFY_URL + "/compile",
         json={
-            "template": template.get("uri", ""),
+            "template": " ", # TODO: for future support of custom templates, non-empty so not falsey
             "data": result.json(),
         },
     )
