@@ -3,7 +3,7 @@
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 import { BackgroundSyncPlugin } from "@serwist/background-sync";
-import { CacheFirst, NetworkFirst, NetworkOnly } from "@serwist/strategies";
+import { NetworkFirst, NetworkOnly } from "@serwist/strategies";
 import { CacheableResponsePlugin } from "@serwist/cacheable-response";
 import { ExpirationPlugin } from "@serwist/expiration";
 
@@ -69,7 +69,7 @@ const serwist = new Serwist({
     },
     {
       matcher: ({ request }) => request.destination === "font" || request.destination === "image",
-      handler: new CacheFirst({
+      handler: new NetworkFirst({
         cacheName: "static-assets-cache",
         plugins: [ new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 }) ],
       }),
