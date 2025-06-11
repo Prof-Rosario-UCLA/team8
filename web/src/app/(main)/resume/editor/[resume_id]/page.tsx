@@ -664,7 +664,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ resume_
     // Right panel is iframe with pdf preview
     const rightPanel = (
         <section className={cn(
-            "w-full md:w-1/2 bg-gray-100 overflow-auto",
+            "w-full md:w-1/2 bg-gray-100 overflow-y-hidden",
             "md:block",
             mobileView === 'editor' ? 'hidden' : 'block'
         )}>

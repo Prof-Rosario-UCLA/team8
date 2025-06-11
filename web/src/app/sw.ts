@@ -41,6 +41,14 @@ const serwist = new Serwist({
       }),
     },
     {
+      matcher: ({ url }) => url.pathname.startsWith("/resume"),
+      handler: new NetworkFirst({
+        cacheName: "resume-pages-cache",
+        networkTimeoutSeconds: 3,
+        plugins: [ new CacheableResponsePlugin({ statuses: [0, 200] }) ],
+      }),
+    },
+    {
       matcher: ({ url }) => url.pathname.startsWith("/api/user/me"),
       handler: new NetworkFirst({
         cacheName: "user-data-cache",
