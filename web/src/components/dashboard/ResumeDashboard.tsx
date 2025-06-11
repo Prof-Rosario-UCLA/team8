@@ -88,16 +88,16 @@ export default function ResumeDashboard() {
 
   return (
     <>
-      <main className="h-full bg-gray-50">
+      <main className="h-full bg-gray-50 flex flex-col">
         {/* Header */}
         <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex justify-between items-center">
-              <div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div className="text-center sm:text-left">
                 <h1 className="text-3xl font-bold text-gray-900">Resume Dashboard</h1>
                 <p className="mt-2 text-gray-600">Manage and create your professional resumes</p>
               </div>
-              <Button onClick={handleCreateResume} disabled={isCreating} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleCreateResume} disabled={isCreating} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
                 <PlusIcon className="h-4 w-4" />
                 {isCreating ? 'Creating...' : 'Create New Resume'}
               </Button>
@@ -106,7 +106,7 @@ export default function ResumeDashboard() {
         </header>
 
         {/* Main Content */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {resumes.length === 0 ? (
             // Empty State
             <section className="text-center py-12">
