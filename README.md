@@ -97,8 +97,6 @@ Our main endpoints are related to auth, user info, and resume CRUD.
 All routes are prefixed with `/api` and `/api` in the frontend proxies to the backend
 
 ## Resume View
-url prefix: `/resume`
-
 `api/views/resume.py`
 
 `/resume/all` GET
@@ -107,6 +105,116 @@ retrieves all resumes
 `/resume/<id>` GET
 retrieves that resume id
 
+Resume JSON example:
+```json
+{
+    "created_at": "2025-06-11T19:16:53.842704+00:00",
+    "email": "joebruin@ucla.edu",
+    "github": "github.com/joebruin",
+    "id": 34,
+    "linkedin": "linkedin.com/joebruin",
+    "name": "Joe Bruin",
+    "phone": "999-999-9999",
+    "resume_name": "Untitled Resume (2)",
+    "sections": [
+        {
+            "display_order": 0,
+            "id": 95,
+            "items": [
+                {
+                    "description": "Degree description",
+                    "display_order": 0,
+                    "end_date": null,
+                    "id": 110,
+                    "location": "",
+                    "organization": "University Name",
+                    "section_id": 95,
+                    "start_date": "2025-06-11T19:16:54.188231+00:00",
+                    "title": "Degree",
+                    "user_id": 5
+                }
+            ],
+            "name": "Education",
+            "resume_id": 34,
+            "section_type": "education",
+            "user_id": 5
+        },
+        {
+            "display_order": 1,
+            "id": 96,
+            "items": [
+                {
+                    "description": "Job description",
+                    "display_order": 0,
+                    "end_date": null,
+                    "id": 111,
+                    "location": "",
+                    "organization": "Company Name",
+                    "section_id": 96,
+                    "start_date": "2025-06-11T19:16:54.311986+00:00",
+                    "title": "Job Title",
+                    "user_id": 5
+                }
+            ],
+            "name": "Experience",
+            "resume_id": 34,
+            "section_type": "experience",
+            "user_id": 5
+        },
+        {
+            "display_order": 2,
+            "id": 97,
+            "items": [
+                {
+                    "description": "Project description",
+                    "display_order": 0,
+                    "end_date": null,
+                    "id": 112,
+                    "location": "",
+                    "organization": "",
+                    "section_id": 97,
+                    "start_date": "2025-06-11T19:16:54.429985+00:00",
+                    "title": "Project Name",
+                    "user_id": 5
+                }
+            ],
+            "name": "Project",
+            "resume_id": 34,
+            "section_type": "project",
+            "user_id": 5
+        },
+        {
+            "display_order": 3,
+            "id": 98,
+            "items": [
+                {
+                    "description": "Resume-building, problem-solving, etc",
+                    "display_order": 0,
+                    "end_date": null,
+                    "id": 113,
+                    "location": "",
+                    "organization": "",
+                    "section_id": 98,
+                    "start_date": "2025-06-11T19:16:54.548347+00:00",
+                    "title": "Skill Category",
+                    "user_id": 5
+                }
+            ],
+            "name": "Technical Skills",
+            "resume_id": 34,
+            "section_type": "skill",
+            "user_id": 5
+        }
+    ],
+    "template_id": 2,
+    "updated_at": "2025-06-11T19:16:53.842704+00:00",
+    "user_id": 5,
+    "website": ""
+}
+```
+
+`sections` and `items` are populated from their own tables where our one to many hierarchy looks like a tree of Resumes having many ResumeSections having many ResuemItems. Our backend routes support updating the resume on the granularity of passing the full resume where the section and item objects will be handled by creating or updating them appropriately based on whether they exist at that id and are owned by the user and are valid.
+
 Both of these endpoints require auth and `/all` is cached with Flask Cache
 
 `/resume/create/<id>` POST
@@ -114,8 +222,12 @@ Both of these endpoints require auth and `/all` is cached with Flask Cache
 `/resume/update/<id>` PUT
 `/resume/<id>` GET
 
-Crud operations, expects a serialized resume as in the `json()` method of the Resume model here:
+CRUD operations, expects a serialized resume as in the `json()` method of the Resume model here:
 `api/models/resume.py`
+
+`update` returns the updated JSON on success and `create` will return the JSON of the newly created resume. `delete` returns a success message on success.
+
+We perform some validation on updating in that we enforce that all sections are present and that all sections contain at least one item for compatibility with the compiler. The frontend also does this validation. 
 
 ## User View
 
@@ -124,16 +236,31 @@ Crud operations, expects a serialized resume as in the `json()` method of the Re
 `/user/me` GET
 retrieves the currently logged in user. It is protected and the login session is used to get the current user.
 
+```JSON
+{
+    "email": "joebruin@ucla.edu",
+    "github": "github.com/joebruin",
+    "google_id": "110192453484285413348",
+    "id": 5,
+    "linkedin": "linkedin.com/joebruin",
+    "name": "Joe Bruin",
+    "phone": "999-999-9999",
+    "profile_picture": "https://lh3.googleusercontent.com/a/ACg8ocJp0tLlnGyJk5iYGTuBLzoC7cQfOTdPALIN4X-H6TvKdUFDXQ=s96-c",
+    "website": ""
+}
+```
+
 ## Auth View
 
 `api/views/auth.py`
 
 `/auth/login` GET 
 
-Login through OAuth redirect
+Login through OAuth redirect.
 
 `/auth/logout` POST 
-Login required, logs user out
+
+Login required, logs user out.
 
 ## Compiler View
 
@@ -141,15 +268,27 @@ For interfacing with Compiler microservice:
 `api/views/compile.py`
 
 `/compile/<resume_id>` POST
-Creating a task with compiler microservice to compile the given resume. Protected by auth and requires user to own the resume.
+Creating a task with compiler microservice to compile the given resume. Protected by auth and requires user to own the resume and the resume must exist.
 
 Gets back the job id to poll with.
+
+```JSON
+{"task_id":"52bf4f0b-dba5-4775-951f-7b45ca03b82d"}
+```
 
 Polling the task status
 `"/status/<job_id>"` GET
 Polls the task status
 
 returns status and URI if complete.
+
+Example:
+```JSON
+{
+    "status": "done",
+    "url": "https://storage.googleapis.com/prolio-resume/52bf4f0b-dba5-4775-951f-7b45ca03b82d.pdf?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=github-actions-deployer%40prolio-resume.iam.gserviceaccount.com%2F20250611%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250611T235409Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=85e8cfc9390bf1e78024397d732f53d5046dc124ddf2a50f67d336423ed8a4c50a17cd72f3cdd4ffa0b466668a70b025246f5069f4faa4aecf495ec4407b5268c9cf4665c4bff6bc2b45a620aeb1224b0095b5e05c2c352f8adbb9c30844e12df6cfd986f17e78a4fd042481ef81490c67a6c0c13942ff14eaa3cac4e7f3e86869a8a01dbb134e561deff7dff3ed0eb2e32e760a8e6a9255e80f6790cac9c5b540d1d814a079d75e472bd8853c6fd6dd19a2c899ec8912fbd4d38840f0e3c30a6c1cdf9f6f5ea7fc22314fe50920bd192afc61d1d00f7b9730eb51f469101468d333ff388d060082f3dd226a99761e056d555de95d7889fea808537073132572"
+}
+```
 
 Note that our template endpoints are skeletoned for future-proofing if in the future custom templates would be supported. For now we support one template in our compiler service.
 
@@ -160,3 +299,10 @@ api/views/ai.py
 
 `/ai/rate/<resume_id>`
 Rates the resume id with the Gemini Python SDK, must provide an API key in the env variable.
+
+```JSON
+{
+    "rating": 3.0,
+    "reasoning": "The resume is a good start but needs significant improvement ... [shortened] ... will greatly enhance your resume's effectiveness."
+}
+```
