@@ -3,13 +3,13 @@
 
 CS 144: Web Applications. Repository for Prolio, an interactive resume content management system!
 
-# About 
+##  About 
 
 Prolio is our web app for resume creation through a simple and intuitive ui, that supports injecting into internal LaTeX templates and compilation into a ATS-compatible PDF rendered from LaTeX for clean formatting. Users may also invite AI feedback as they work with the help of our AI reviewer built-on Gemini. 
 
 We support drag and drop for ease of reordering resume elements within resume sections as well as geolocation for convenient location filling.
 
-# Setup
+## Setup
 
 To build and run the service do:
 `docker-compose build && docker-compose up`
@@ -20,7 +20,7 @@ Note that you will need to provide a Gemini API key to make use of the api servi
 
 We have a mock OAuth flow and mock GCS bucket and SQLite for the DB by default but in our main deployment we use the actual services and our PostgreSQL DB is hosted on Supabase.
 
-## Gemini API Key Setup 
+### Gemini API Key Setup 
 
 Create a `.env` file in the root directory. There are defaults for all of these except for the `GEMINI_API_KEY` for which you may either provide a Gemini Key by following these steps or filling in an invalid key which will cause the rating endpoint to fail but allow the project to build.
 
@@ -46,7 +46,7 @@ GEMINI_API_KEY=<GEMINI_API_KEY>
 ``` 
 where you should replace `<GEMINI_API_KEY>` with your generated key.
 
-## Other Env Variable Configuration
+### Other Env Variable Configuration
 
 The below are optional as the default build has mocks or local defaults for these but here is the full set of env variables.
 ```
@@ -66,7 +66,113 @@ CLIENT_ORIGIN=<FRONTEND_SERVER_URL>
 SERVER_URL=<API_URL>
 ```
 
-# Repo Organization
+### Deploying to Google Cloud
+To deploy Prolio to Google Cloud, we use Google App Engine, Cloud Storage, and Cloud Build.
+
+#### Prerequisites
+You will need the following before beginning to deploy.
+- A GCP project (create via [console](https://console.cloud.google.com/)).
+- gcloud CLI installed and authenticated (`gcloud auth login`).
+- Billing enabled on your project.
+
+Enable the following GCP services:
+
+```
+gcloud services enable \
+    artifactregistry.googleapis.com \
+    cloudbuild.googleapis.com \
+    compute.googleapis.com \
+    appengine.googleapis.com \
+    redis.googleapis.com \
+    iam.googleapis.com \
+    storage.googleapis.com
+```
+
+1. Set Up OAuth. Following the following instructions to configure the [OAuth consent page](https://developers.google.com/workspace/guides/configure-oauth-consent) and [create credentials](https://developers.google.com/workspace/guides/create-credentials). Add the generated Google Client ID and Client Secret to the `.env` at the root of the project directory in the format shown in the previous section.
+2. Create a Bucket on Google Cloud Storage. Using the following instructions to [create a bucket on Google Cloud Storage](https://cloud.google.com/storage/docs/creating-buckets#console). Place the name of your Google Cloud Storage bucket in the `.env` file. You will then need to create a service account so that creating objects in GCS is possible, using [these instructions](https://cloud.google.com/iam/docs/service-accounts-create) to do that. Use the following commands to do this and place the final `gcs-access-key.json` in `texify/gcs-access-key.json`.
+
+Create 
+```bash
+gcloud iam service-accounts keys create gcs-access-key.json \
+  --iam-account=YOUR_SERVICE_ACCOUNT_NAME@YOUR_PROJECT_ID.iam.gserviceaccount.com`
+```
+
+Create the service account.
+```bash
+gcloud iam service-accounts create prolio-deployer \
+  --description="Service account for Prolio deployment" \
+  --display-name="Prolio Deployer"
+```
+
+Give the following permissions to the service account.
+```bash
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:prolio-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:prolio-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudbuild.builds.editor"
+```
+
+3. Create the Redis Cluster. We use Redis for Texify. You will need to deploy it using either an external Cloud Database Provider For our deployment, we use Memstore for Redis. Follow [these instructions](https://cloud.google.com/memorystore/docs/redis/create-instance-gcloud) for setting this up. Be careful that this cluster is only accessible within the same VPC so make sure to deploy it in the same [VPC](https://cloud.google.com/vpc/docs) as your Google App Engine project. Add the IP for the server to your `.env` file (make sure your Redis cluster is deployed using port `6379`).
+4. Create the PostgreSQL Cluster. You can any cloud database solution that you like. We used Supabase to host our PostgreSQL server. For instructions on setting up a PostgreSQL server on Supabase, use the following [instructions](https://docs.stacksync.com/guides/two-way-sync-salesforce-and-postgres/create-a-postgres-database-with-supabase-free-forever). Add the database URI to your `.env` file.
+5. Create Google Gemini API Key.
+Follow the instructions above and add it to your `.env` file.
+6. Create a Project on Google App Engine. You will need to create a project on Google App Engine. Follow these [instructions](https://cloud.google.com/appengine/docs/standard/managing-projects-apps-billing#create).
+7. Add Deployment URLs to `.env`. Google App Engine will set up HTTPS and DNS automatically based on your project name.
+The names you need to put in the `.env` file for Texify, Client, and Server are based on the project name.
+Add the following to the `.env` file.
+
+```
+TEXIFY_URL=https://texify-dot-<project-name>.<region>.r.appspot.com
+CLIENT_ORIGIN=https://<project-name>.<region>.r.appspot.com
+SERVER_URL=https://api-dot-<project-name>.<region>.r.appspot.com
+```
+
+8. Generate the `app.yaml` and `cloudbuild.yaml`.
+You need to generate these files to deploy with Cloud Build and App Engine using the secrets added in the `.env` file.
+We have provided a script that generates these files in the relevant directories.
+Run the following command to generate these configuration files.
+
+```bash
+bash prepare.sh
+```
+
+9. Deploy with Cloud Build.
+There is a a separate Cloud Build pipeline for each service.
+You can deploy each of them using the following commands.
+
+```bash
+# API Gateway
+gcloud builds submit api/ --config=api/cloudbuild.yaml
+# Texify
+gcloud builds submit texify/ --config=texify/cloudbuild.yaml
+# Web Client
+gcloud builds submit web/ --config=web/cloudbuild.yaml
+```
+
+After these commands are run, your application should be deployed.
+
+### GitHub Actions
+We use GitHub Actions to integrate CI/CD for our web application.
+To set up GitHub Actions, you will need to [add the following Repository Secrets for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions).
+
+![GitHub Actions Secrets](readme_assets/github-actions-secrets.png)
+
+`ENV` is the contents of your `.env` created above.
+`GCP_PROJECT_ID` is your project ID on Google Cloud.
+`GCP_SA_KEY` is the key for your service account.
+Use these [instructions](https://cloud.google.com/iam/docs/keys-create-delete) to create a service account for deploying via GitHub Actions.
+You will need to give this service worker the following permissions on Google Cloud IAMs.
+
+![Service Account IAM Permissions](readme_assets/service-account-permissions.png)
+
+`GCS_ACCESS_KEY` is the contents of your `gcs-access-key.json` created earlier.
+
+You can then [manually trigger](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow) each of the workflows to have the service deployed.
+
+## Repo Organization
 
 ![System Design](readme_assets/system-design.png)
 
@@ -80,7 +186,7 @@ We have response uis, accessibilities features, PWA and offline support via our 
 
 `oauth` is OAuth mock when https is not present in local dev.
 
-# API 
+## API 
 
 As a group of 2, this project does not expose endpoints and we make use of the Gemini API instead.
 
@@ -96,7 +202,7 @@ Our main endpoints are related to auth, user info, and resume CRUD.
 
 All routes are prefixed with `/api` and `/api` in the frontend proxies to the backend
 
-## Resume View
+### Resume View
 `api/views/resume.py`
 
 `/resume/all` GET
@@ -229,7 +335,7 @@ CRUD operations, expects a serialized resume as in the `json()` method of the Re
 
 We perform some validation on updating in that we enforce that all sections are present and that all sections contain at least one item for compatibility with the compiler. The frontend also does this validation. 
 
-## User View
+### User View
 
 `api/views/user.py`
 
@@ -250,7 +356,7 @@ retrieves the currently logged in user. It is protected and the login session is
 }
 ```
 
-## Auth View
+### Auth View
 
 `api/views/auth.py`
 
@@ -262,7 +368,7 @@ Login through OAuth redirect.
 
 Login required, logs user out.
 
-## Compiler View
+### Compiler View
 
 For interfacing with Compiler microservice:
 `api/views/compile.py`
@@ -292,7 +398,7 @@ Example:
 
 Note that our template endpoints are skeletoned for future-proofing if in the future custom templates would be supported. For now we support one template in our compiler service.
 
-## AI View
+### AI View
 
 api/views/ai.py
 [route](api/views/ai.py)
